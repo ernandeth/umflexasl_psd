@@ -196,7 +196,7 @@ int rfspoil_flag = 1 with {0, 1, 1, VIS, "option to do RF phase cycling (117deg 
 int flowcomp_flag = 0 with {0, 1, 0, VIS, "option to use flow-compensated slice select gradients",};
 int rf1_b1calib = 0 with {0, 1, 0, VIS, "option to sweep B1 amplitudes across frames from 0 to nominal B1 for rf1 pulse",};
 
-int pgNObuffertime = 4 with {0, , 248, VIS, "Fake gradient IPG buffer time (us)",}; /* used to be 248 */
+int pgNObuffertime = 248 with {0, , 248, VIS, "Fake gradient IPG buffer time (us)",}; /* used to be 248 */
 
 int pgbuffertime = 248 with {0, , 248, VIS, "gradient IPG buffer time (us)",}; /* used to be 248 */
 int pcasl_buffertime = 0 with {0, , 248, VIS, "PCASL core - gradient IPG buffer time (us)",}; /* used to be 100 */
@@ -380,6 +380,7 @@ FILTER_INFO echo1_rtfilt;
 float phi2D = (1.0 + sqrt(5.0)) / 2.0; /* 2d golden ratio */
 float phi3D_1 = 0.4656; /* 3d golden ratio 1 */
 float phi3D_2 = 0.6823; /* 3d golden ratio 2 */
+float GoldenAngle = 0.0;
 
 /*---- This is where we put function prototype declarations for the HOST,  not the IPG ------*/
 
@@ -1361,6 +1362,11 @@ STATUS predownload( void )
 	fprintf(stderr, "\npredownload(): CORRECTED PCASL linear phase increment: %f (rads)", pcasl_delta_phs);
 	fprintf(stderr, "\npredownload(): calling calc_pcasl_phases() to make the linear phase sweep \n");
 	calc_pcasl_phases(pcasl_iphase_tbl, pcasl_delta_phs, MAXPCASLSEGMENTS);
+
+	if (pcasl_flag	&& pcasl_calib) {
+			nm0frames = 0;
+			phs_cal_step = 2.0*M_PI / (float)(nframes) * (float)(pcasl_calib_frames);
+	}
 
 	if (doVelSpectrum==2){
 		/* velocity spectrum default venc gradient increments - so that it goes from -4.0 to +4.0 G/cm */
@@ -4093,8 +4099,11 @@ int genviews() {
 	float element; 
 	int mrf_nframes = 1;
 	int nfr =0;
+	int isOddFrame = -1;
 
 	fprintf(stderr, "genviews...():\n");
+
+	GoldenAngle = 2*M_PI*(1-1/phi2D);  /* definition of golden angle (rads) */
 
 	if(mrf_mode > 0) mrf_nframes=nframes;
 
@@ -4181,7 +4190,7 @@ int genviews() {
 							phi = acos(1 - 2*(float)(shotn*opetl + echon)/(float)(opnshots*opetl)); /* azimuthal angle */
 							
 							/* test: use the arms, instead of the shots to advance the angle*/
-							theta = (float)(armn*opetl + echon)*2*M_PI / phi2D; /* polar angle */
+							theta = (float)(armn*opetl + echon) * GoldenAngle; /* polar angle */
 							phi = acos(1 - 2*(float)(armn*opetl + echon)/(float)(narms*opetl)); /* azimuthal angle */
 							
 							if (mrf_mode>0){
@@ -4233,17 +4242,21 @@ int genviews() {
 				
 			}
 		}
+		
 		/* in MRF mode -  we use different rotations in each frame.
 		Increment the first of the rotations by the last rotation in the previous frame */
-		if (mrf_mode >0) {
+		if ((mrf_mode >0) && (isOddFrame==1)) {
 			/* prev_theta = (float)(opnshots*opetl*narms*(nfr + 1))*phi3D_1 *2*M_PI / phi2D;  */
 			/* prev_phi = acos(1 - 2*(float)(opnshots*opetl*narms*(nfr + 1))/(float)(opnshots*opetl));  */
 			prev_theta = theta;
 			/*prev_phi = phi; --- this will just repeat*/
 			prev_phi = M_PI* (nfr+1) / nframes;  /* phi rotation angles are now evenly spaced over the frames*/
+
 			/* SOS case: rotate along z axis from frame to frame */
-			prev_rz += phi2D;
+			prev_rz += GoldenAngle;  /* increment by golden angle*/
 		}
+		/* toggle the isOddFrame only in the mrf_mode case of 2*/
+		if (mrf_mode==2) isOddFrame *= -1;
 	}
 
 	/* Close the files */

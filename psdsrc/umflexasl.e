@@ -4190,8 +4190,8 @@ int genviews() {
 							phi = acos(1 - 2*(float)(shotn*opetl + echon)/(float)(opnshots*opetl)); /* azimuthal angle */
 							
 							/* test: use the arms, instead of the shots to advance the angle*/
-							theta = (float)(armn*opetl + echon) * GoldenAngle; /* polar angle */
-							phi = acos(1 - 2*(float)(armn*opetl + echon)/(float)(narms*opetl)); /* azimuthal angle */
+							theta = (float)(armn*opetl + echon) * GoldenAngle; /* polar angle (x-axis) */
+							phi = acos(1 - 2*(float)(armn*opetl + echon)/(float)(narms*opetl)); /* azimuthal angle (z-axis)*/
 							
 							if (mrf_mode>0){
 								theta += prev_theta;
@@ -4247,10 +4247,13 @@ int genviews() {
 		Increment the first of the rotations by the last rotation in the previous frame */
 		if ((mrf_mode >0) && (isOddFrame==1)) {
 			/* prev_theta = (float)(opnshots*opetl*narms*(nfr + 1))*phi3D_1 *2*M_PI / phi2D;  */
+			prev_theta = theta;  /* Additional theta rotation (x-axis) increment per frame: */
+
 			/* prev_phi = acos(1 - 2*(float)(opnshots*opetl*narms*(nfr + 1))/(float)(opnshots*opetl));  */
-			prev_theta = theta;
-			/*prev_phi = phi; --- this will just repeat*/
-			prev_phi = M_PI* (nfr+1) / nframes;  /* phi rotation angles are now evenly spaced over the frames*/
+			prev_phi = M_PI* (nfr+1) / nframes;  /* Additional phi rotation angles (z-axis) are now evenly spaced over the frames*/
+			/* Try this next time:   
+			prev_phi = nfr * GoldenAngle;
+			*/
 
 			/* SOS case: rotate along z axis from frame to frame */
 			prev_rz += GoldenAngle;  /* increment by golden angle*/

@@ -302,6 +302,7 @@ int	zero_CTL_grads = 0; /* option to use zero gradients for the control pulses *
 
 /* Declare core duration variables */
 int dur_presatcore = 0 with {0, , 0, INVIS, "duration of the ASL pre-saturation core (us)",};
+int dur_slabpresatcore = 0 with {0, , 0, INVIS, "duration of the ASL slab selective pre-saturation core (us)",};
 int dur_pcaslcore = 0 with {0, , 0, INVIS, "Duration of the PCASL core (us)",};
 int dur_prep1core = 0 with {0, , 0, INVIS, "duration of the ASL prep 1 cores (us)",};
 int dur_prep2core = 0 with {0, , 0, INVIS, "duration of the ASL prep 2 cores (us)",};
@@ -1414,6 +1415,28 @@ STATUS predownload( void )
 	pw_rfps4cd = tmp_pwd;
 	a_rfps4c = tmp_a;
 
+
+	/* slab selective presat spoilers */
+    pw_rfps1ssc = tmp_pw;
+	pw_rfps1ssca = tmp_pwa;
+	pw_rfps1sscd = tmp_pwd;
+	a_rfps1ssc = tmp_a;
+	
+    pw_rfps2ssc = tmp_pw;
+	pw_rfps2ssca = tmp_pwa;
+	pw_rfps2sscd = tmp_pwd;
+	a_rfps2ssc = tmp_a;
+	
+    pw_rfps3ssc = tmp_pw;
+	pw_rfps3ssca = tmp_pwa;
+	pw_rfps3sscd = tmp_pwd;
+	a_rfps3ssc = tmp_a;
+
+	pw_rfps4ssc = tmp_pw;
+	pw_rfps4ssca = tmp_pwa;
+	pw_rfps4sscd = tmp_pwd;
+	a_rfps4ssc = tmp_a;
+
 	/* fat sat spoiler*/
 	pw_gzrffsspoil = tmp_pw + 2000; /*Making sure that the transverse magnetization is spoiled and we don't get stimulated echoes from the prep pulse*/
 	pw_gzrffsspoila = tmp_pwa ;
@@ -1764,6 +1787,28 @@ STATUS predownload( void )
 		}
 	}
 
+	/* Calculate the duration of the SLAB-SELECTIVE presatcore */
+	dur_slabpresatcore = 0;
+	dur_slabpresatcore += pgbuffertime;
+	dur_slabpresatcore += pw_gzrfps1ss + 2*pw_gzrfps1ssa;
+	dur_slabpresatcore += pgbuffertime;
+	dur_slabpresatcore += pw_rfps1ssca + pw_rfps1ssc + pw_rfps1sscd;
+	dur_slabpresatcore += 1000 + pgbuffertime;
+	dur_slabpresatcore += pw_gzrfps2ss + 2*pw_gzrfps2ssa;
+	dur_slabpresatcore += pgbuffertime;
+	dur_slabpresatcore += pw_rfps2ssca + pw_rfps2ssc + pw_rfps2sscd;
+	dur_slabpresatcore += 1000 + pgbuffertime;
+	dur_slabpresatcore += pw_gzrfps3ss + 2*pw_gzrfps3ssa;
+	dur_slabpresatcore += pgbuffertime;
+	dur_slabpresatcore += pw_rfps3ssca + pw_rfps3ssc + pw_rfps3sscd;
+	dur_slabpresatcore += 1000 + pgbuffertime;
+	dur_slabpresatcore += pw_gzrfps4ss + 2*pw_gzrfps4ssa;
+	dur_slabpresatcore += pgbuffertime;
+	dur_slabpresatcore += pw_rfps4ssca + pw_rfps4ssc + pw_rfps4sscd;
+	dur_slabpresatcore += pgbuffertime;
+
+
+
 	/* Calculate the duration of presatcore */
 	dur_presatcore = 0;
 	dur_presatcore += pgbuffertime;
@@ -1859,7 +1904,7 @@ STATUS predownload( void )
 	dur_seqcore += deadtime2_seqcore + pgNObuffertime;
 
 	/* calculate minimum TR */
-	absmintr = presat_flag*(dur_presatcore + TIMESSI + presat_delay + TIMESSI);
+	absmintr = presat_flag*(dur_slabpresatcore + TIMESSI + presat_delay + TIMESSI);
 	absmintr += (pcasl_flag) *  pcasl_Npulses*(dur_pcaslcore + TIMESSI);
 	absmintr += (pcasl_flag) * (pcasl_pld + TIMESSI);
 	absmintr += (prep1_id > 0)*(dur_prep1core + TIMESSI + prep1_pld + TIMESSI);
@@ -2172,6 +2217,75 @@ STATUS pulsegen( void )
 	SEQLENGTH(seqcore, dur_seqcore, seqcore);
 	fprintf(stderr, "\tDone.\n");
 
+
+	/*************************/
+	/* generate slab selective presat core*/
+	/*************************/
+	fprintf(stderr, "pulsegen(): beginning pulse generation of Slab Selective presatcore\n");
+	tmploc = 0;
+	
+	fprintf(stderr, "pulsegen(): generating rfps1ss (presat rf pulse 1)...\n");
+	tmploc += pgbuffertime; /* start time for presat pulse 1 */
+	SLICESELZ(rfps1ss, tmploc + pw_gzrfps1ssa, 3200, (opslthick + opslspace) * opslquant * SE_factor , 72.0, 2, 1, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps1ss + 2*pw_gzrfps1ssd;
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+    fprintf(stderr, "pulsegen(): generating rfps1ssc (presat rf crusher 1)...\n");
+	tmploc += pgbuffertime; /*start time for gradient */
+	TRAPEZOID(ZGRAD, rfps1ssc, tmploc + pw_rfps1ssca, 1ms, 0, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps1ssca + pw_rfps1ssc + pw_rfps1sscd; /* end time for gradient */
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+	fprintf(stderr, "pulsegen(): generating rfps2ss (presat rf pulse 2)...\n");
+	tmploc += pgbuffertime + 1ms; /* start time for presat pulse 1 */
+	SLICESELZ(rfps2ss, tmploc + pw_gzrfps2ssa, 3200, (opslthick + opslspace) * opslquant * SE_factor , 92.0, 2, 1, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps2ss + 2*pw_gzrfps2ssd;
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+    fprintf(stderr, "pulsegen(): generating rfps2ssc (presat rf crusher 2)...\n");
+	tmploc += pgbuffertime; /*start time for gradient */
+	TRAPEZOID(ZGRAD, rfps2ssc, tmploc + pw_rfps1ssca, 1ms, 0, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps2ssca + pw_rfps2ssc + pw_rfps2sscd; /* end time for gradient */
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+	fprintf(stderr, "pulsegen(): generating rfps3ss (presat rf pulse 3)...\n");
+	tmploc += pgbuffertime + 1ms; /* start time for presat pulse 1 */
+	SLICESELZ(rfps3ss, tmploc + pw_gzrfps3ssa, 3200, (opslthick + opslspace) * opslquant * SE_factor , 126.0, 2, 1, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps3ss + 2*pw_gzrfps3ssd;
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+    fprintf(stderr, "pulsegen(): generating rfps3ssc (presat rf crusher 3)...\n");
+	tmploc += pgbuffertime; /*start time for gradient */
+	TRAPEZOID(ZGRAD, rfps3ssc, tmploc + pw_rfps3ssca, 1ms, 0, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps3ssca + pw_rfps3ssc + pw_rfps3sscd; /* end time for gradient */
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+	fprintf(stderr, "pulsegen(): generating rfps4ss (presat rf pulse 4)...\n");
+	tmploc += pgbuffertime + 1ms; /* start time for presat pulse 1 */
+	SLICESELZ(rfps4ss, tmploc + pw_gzrfps4ssa, 3200, (opslthick + opslspace) * opslquant * SE_factor , 193.0, 2, 1, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps4ss + 2*pw_gzrfps4ssd;
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+    fprintf(stderr, "pulsegen(): generating rfps4ssc (presat rf crusher 4)...\n");
+	tmploc += pgbuffertime; /*start time for gradient */
+	TRAPEZOID(ZGRAD, rfps4ssc, tmploc + pw_rfps4ssca, 1ms, 0, loggrd);
+	fprintf(stderr, "\tstart: %dus, ", tmploc);
+	tmploc += pw_rfps4ssca + pw_rfps4ssc + pw_rfps4sscd; /* end time for gradient */
+	fprintf(stderr, " end: %dus\n", tmploc);
+
+    tmploc += pgbuffertime; /* add some buffer time */
+
+	fprintf(stderr, "pulsegen(): finalizing slab-selective presatcore...\n");
+	fprintf(stderr, "\ttotal time: %dus (tmploc = %dus)\n", dur_slabpresatcore, tmploc);
+	SEQLENGTH(slabpresatcore, dur_slabpresatcore, slabpresatcore);
+	fprintf(stderr, "\tDone.\n");
 
 	/************************/
 	/* generate presat core */
@@ -2661,9 +2775,10 @@ int play_deadtime(int deadtime) {
 int play_presat() {
 
 	/* Play bulk saturation pulse */	
-	fprintf(stderr, "\tplay_presat(): playing asl pre-saturation pulse (%d us)...\n", dur_presatcore + TIMESSI);
+	fprintf(stderr, "\tplay_presat(): playing asl SLAB pre-saturation pulse (%d us)...\n", dur_slabpresatcore + TIMESSI);
 
-	boffset(off_presatcore);
+	/* execute the slab selective presat inteadd - used to be non-selective*/
+	boffset(off_slabpresatcore);
 	startseq(0, MAY_PAUSE);
 	settrigger(TRIG_INTERN, 0);
 
@@ -2673,7 +2788,7 @@ int play_presat() {
 
 	fprintf(stderr, "\tplay_presat(): Done.\n");
 
-	return dur_presatcore + TIMESSI + presat_delay;
+	return dur_slabpresatcore + TIMESSI + presat_delay;
 }
 
 /* function for playing asl prep pulses & delays */

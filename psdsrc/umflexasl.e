@@ -4364,8 +4364,10 @@ int genviews() {
 			/* prev_theta = (float)(opnshots*opetl*narms*(nfr + 1))*phi3D_1 *2*M_PI / phi2D;  */
 			/* prev_phi = acos(1 - 2*(float)(opnshots*opetl*narms*(nfr + 1))/(float)(opnshots*opetl));  */
 			prev_theta = theta;
+
 			/*prev_phi = phi; --- this will just repeat*/
-			prev_phi = M_PI* (nfr+1) / nframes;  /* phi rotation angles are now evenly spaced over the frames*/
+			/*prev_phi = M_PI* (nfr+1) / nframes; */  /* phi rotation angles are now evenly spaced over the frames*/
+			prev_phi = GoldenAngle * (nfr+1) / nframes;  /* phi rotation angles increment by 2X golden ange at ever pair of frames*/
 
 			/* SOS case: rotate along z axis from frame to frame */
 			prev_rz += GoldenAngle;  /* increment by golden angle*/

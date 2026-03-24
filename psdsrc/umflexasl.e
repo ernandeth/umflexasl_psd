@@ -2268,7 +2268,7 @@ STATUS pulsegen( void )
 
 	fprintf(stderr, "pulsegen(): generating rfps4ss (presat rf pulse 4)...\n");
 	tmploc += pgbuffertime + 1ms; /* start time for presat pulse 1 */
-	SLICESELZ(rfps4ss, tmploc + pw_gzrfps4ssa, 3200, (opslthick + opslspace) * opslquant * SE_factor , 193.0, 2, 1, loggrd);
+	SLICESELZ(rfps4ss, tmploc + pw_gzrfps4ssa, 3200, (opslthick + opslspace) * opslquant * SE_factor , 180.0, 2, 1, loggrd);  /* should be a 193 degree pulse */
 	fprintf(stderr, "\tstart: %dus, ", tmploc);
 	tmploc += pw_rfps4ss + 2*pw_gzrfps4ssd;
 	fprintf(stderr, " end: %dus\n", tmploc);

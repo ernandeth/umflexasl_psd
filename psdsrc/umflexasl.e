@@ -170,7 +170,7 @@ float xmitfreq;
 
 int numdda = 4;			/* For Prescan: # of disdaqs ps2*/
 
-float SLEWMAX = 9000.0 with {1000, 25000.0, 12500.0, VIS, "maximum allowed slew rate (G/cm/s)",};
+float SLEWMAX = 10000.0 with {1000, 25000.0, 12500.0, VIS, "maximum allowed slew rate (G/cm/s)",};
 float GMAX = 4.0 with {0.5, 5.0, 4.0, VIS, "maximum allowed gradient (G/cm)",};
 
 /* readout cvs */
@@ -218,7 +218,7 @@ float F2 = 0 with { , , 0, INVIS, "vds fov coefficient 2",};
 
 /* ASL prep pulse cvs */
 int presat_flag = 0 with {0, 1, 0, VIS, "option to play asl pre-saturation pulse at beginning of each tr",};
-int presat_delay = 2500000 with {0, , 2500000, VIS, "ASL pre-saturation delay (us)",};
+int presat_delay = 2000000 with {0, , 2500000, VIS, "ASL pre-saturation delay (us)",};
 int nm0frames = 0 with {0, , 2, VIS, "Number of M0 frames (no prep pulses are played)",};
 
 int zero_ctl_grads = 0 with {0, 1, 0, VIS, "option to zero out control gradients for asl prep pulses",};
@@ -4256,7 +4256,7 @@ int genviews() {
 
 	/* Loop through all views */
 	for(nfr=0; nfr < mrf_nframes; nfr++){
-		fprintf(stderr, "genviews(): rotation table tmtxtbl[][] entries for frame %d : \n", nfr);
+		/*fprintf(stderr, "genviews(): rotation table tmtxtbl[][] entries for frame %d : \n", nfr);*/
 		for (armn = 0; armn < narms; armn++) {
 			for (shotn = 0; shotn < opnshots; shotn++) {
 				for (echon = 0; echon < opetl; echon++) {

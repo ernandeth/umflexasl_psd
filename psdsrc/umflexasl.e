@@ -3110,9 +3110,18 @@ int play_rf0(float phs) {
 in FSE mode, this serves as the refocuser (180) */
 int play_rf1(float phs) {
 	int ttotal = 0;
+	short sPhase;
+
+	/* translate to radians */
+	phs *= M_PI/180;
+	/* unwrap */
+	phs = atan2(sin(phs), cos(phs));
+	/* translate to DAC units */
+	sPhase = (short)(phs*(float)(FS_PI)/M_PI);
 
 	/* set rx and tx phase */
-	setphase(phs, &rf1, 0);
+	setiphase(sPhase, &rf1, 0);
+	//setphase(phs, &rf1, 0);
 
 	/* Play the rf1 */
 	fprintf(stderr, "\tplay_rf1(): playing rf1core (%d us)...\n", dur_rf1core);
@@ -4310,7 +4319,8 @@ int genviews() {
 							
 							if (mrf_mode>0){
 								theta += prev_theta;
-								phi += prev_phi;
+								/* phi += prev_phi; */
+								phi += GoldenAngle; 
 							}
 							/* theta = acos(fmod(echon*phi3D_1, 1.0));  */
 							/* phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0); */

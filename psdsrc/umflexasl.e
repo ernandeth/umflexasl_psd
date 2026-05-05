@@ -3410,7 +3410,7 @@ STATUS prescanCore() {
 				}
 			else
 				//ttotal += play_rf1(0);
-				ttotal += play_rf1(rfspoil_flag*117*(echon + ndisdaqechoes));
+				ttotal += play_rf1(rfspoil_flag*rfphase_tab[echon]);
 
 
 			/* set rotation matrix for each echo readout */
@@ -3561,7 +3561,7 @@ STATUS scan( void )
 				}
 			else
 				//ttotal += play_rf1(0);
-				ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon + ndisdaqechoes]);
+				ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon]);
 
 			/* Load the DAB */		
 			fprintf(stderr, "scan(): loaddab(&echo1, %d, 0, DABSTORE, 0, DABOFF, PSD_LOAD_DAB_ALL)...\n", echon+1);
@@ -3796,7 +3796,7 @@ STATUS scan( void )
 							ttotal += play_rf1(FS_PI/2 );
 					}
 					else
-						ttotal += play_rf1(rfspoil_flag*117*echon);
+						ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon]);
 
 					fprintf(stderr, "scan(): playing deadtime in place of readout for frame %d, shot %d, disdaq echo %d (%d us)...\n", framen, shotn, echon, dur_seqcore);
 					ttotal += play_deadtime(dur_seqcore);

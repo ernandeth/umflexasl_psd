@@ -4308,20 +4308,17 @@ int genviews() {
 							break;
 						case 2: /* 3D TGA */
 
-							/* using the fiboancci sphere formulas */
-							theta = (float)(shotn*opetl + echon)*2*M_PI / phi2D; /* polar angle */
-							phi = acos(1 - 2*(float)(shotn*opetl + echon)/(float)(opnshots*opetl)); /* azimuthal angle */
-							
-							/* test: use the arms, instead of the shots to advance the angle*/
+							/* using the fiboancci sphere formulasi (phylotaxis) */
 							theta = (float)(armn*opetl + echon) * GoldenAngle; /* polar angle (x-axis) */
 							phi = acos(1 - 2*(float)(armn*opetl + echon)/(float)(narms*opetl)); /* azimuthal angle (z-axis)*/
 							
 							if (mrf_mode>0){
+								/* This is the GoldenMeans formula: */
+								/* theta = acos(fmod(echon*phi3D_1, 1.0));  */
+								/* phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0); */
 								theta += prev_theta;
 								phi += prev_phi; 
 							}
-							/* theta = acos(fmod(echon*phi3D_1, 1.0));  */
-							/* phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0); */
 							dz = 0.0;
 							break;
 						

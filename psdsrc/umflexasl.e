@@ -135,6 +135,9 @@ int prep2_grad_ctl[MAXWAVELEN];
 /* allocate space for PCASL pulse train phases */
 int pcasl_iphase_tbl[MAXPCASLSEGMENTS];
 
+/*Allocate space for phases needed for RF spoiling (SPGR)*/
+int rfphase_tab[MAXNECHOES+10];
+	
 /* Allocate space and intialize table with values as if it were not MRF */
 float mrf_deadtime[MAXNFRAMES];
 float mrf_prep1_pld[MAXNFRAMES];
@@ -148,6 +151,7 @@ int mrf_pcasl_type[MAXNFRAMES];
 /* Declare receiver and Tx frequencies */
 float recfreq;
 float xmitfreq;
+
 
 @cv
 /*********************************************************************
@@ -170,7 +174,7 @@ float xmitfreq;
 
 int numdda = 4;			/* For Prescan: # of disdaqs ps2*/
 
-float SLEWMAX = 9000.0 with {1000, 25000.0, 12500.0, VIS, "maximum allowed slew rate (G/cm/s)",};
+float SLEWMAX = 10000.0 with {1000, 25000.0, 12500.0, VIS, "maximum allowed slew rate (G/cm/s)",};
 float GMAX = 4.0 with {0.5, 5.0, 4.0, VIS, "maximum allowed gradient (G/cm)",};
 
 /* readout cvs */
@@ -218,7 +222,7 @@ float F2 = 0 with { , , 0, INVIS, "vds fov coefficient 2",};
 
 /* ASL prep pulse cvs */
 int presat_flag = 0 with {0, 1, 0, VIS, "option to play asl pre-saturation pulse at beginning of each tr",};
-int presat_delay = 2500000 with {0, , 2500000, VIS, "ASL pre-saturation delay (us)",};
+int presat_delay = 2000000 with {0, , 2500000, VIS, "ASL pre-saturation delay (us)",};
 int nm0frames = 0 with {0, , 2, VIS, "Number of M0 frames (no prep pulses are played)",};
 
 int zero_ctl_grads = 0 with {0, 1, 0, VIS, "option to zero out control gradients for asl prep pulses",};
@@ -238,7 +242,7 @@ int prep2_id = 0 with {0, , 0, VIS, "ASL prep pulse 2: ID number (0 = no pulse)"
 int prep2_pld = 0 with {0, , 0, VIS, "ASL prep pulse 2: post-labeling delay (us; includes background suppression)",};
 float prep2_rfmax = 234 with {0, , 0, VIS, "ASL prep pulse 2: maximum RF amplitude",};
 float prep2_gmax = 1.5 with {0, , 1.5, VIS, "ASL prep pulse 2: maximum gradient amplitude",};
-int prep2_mod = 1 with {1, 4, 1, VIS, "ASL prep pulse 2: labeling modulation scheme (1 = label/control, 2 = control/label, 3 = always label, 4 = always control)",};
+int prep2_mod = 3 with {1, 4, 1, VIS, "ASL prep pulse 2: labeling modulation scheme (1 = label/control, 2 = control/label, 3 = always label, 4 = always control)",};
 int prep2_tbgs1 = 0 with {0, , 0, VIS, "ASL prep pulse 2: 1st background suppression delay (0 = no pulse)",};
 int prep2_tbgs2 = 0 with {0, , 0, VIS, "ASL prep pulse 2: 2nd background suppression delay (0 = no pulse)",};
 int prep2_tbgs3 = 0 with {0, , 0, VIS, "ASL prep pulse 2: 3rd background suppression delay (0 = no pulse)",};
@@ -395,6 +399,7 @@ int readprep(int id, int *len,
 		int *rho_ctl, int *theta_ctl, int *grad_ctl); 
 float calc_sinc_B1(float cyc_rf, int pw_rf, float flip_rf);
 float calc_hard_B1(int pw_rf, float flip_rf);
+int calc_spgr_phs(int *irfphase, int ntab);
 int write_scan_info();
 
 /* function to fetch radout gradients from file */
@@ -1676,7 +1681,9 @@ STATUS predownload( void )
 			break;
 
 		case 3: /* SPGR */
-			
+			/* calculate phases for SPGR transmit and receive*/
+			calc_spgr_phs(rfphase_tab, (opetl+ndisdaqechoes)*narms);
+
 			/* calculate minimum esp (time from rf1 to next rf1) */
 			minesp += pw_gzrf1/2 + pw_gzrf1d; /* 2nd half of rf1 pulse */
 			minesp += pgNObuffertime;
@@ -3108,11 +3115,12 @@ int play_rf0(float phs) {
 
 /* function for playing GRE rf1 pulse
 in FSE mode, this serves as the refocuser (180) */
-int play_rf1(float phs) {
+int play_rf1(int phs) {
 	int ttotal = 0;
 
 	/* set rx and tx phase */
-	setphase(phs, &rf1, 0);
+	/* setphase(phs, &rf1, 0);*/
+	setiphase(phs, &rf1, 0);
 
 	/* Play the rf1 */
 	fprintf(stderr, "\tplay_rf1(): playing rf1core (%d us)...\n", dur_rf1core);
@@ -3126,11 +3134,11 @@ int play_rf1(float phs) {
 
 /* function for playing FSE rf1 refocuser pulse
 this refocuser is a non-selective rect function */
-int play_rf1ns(float phs) {
+int play_rf1ns(int phs) {
 	int ttotal = 0;
 
 	/* set rx and tx phase */
-	setphase(phs, &rf1ns, 0);
+	setiphase(phs, &rf1ns, 0);
 
 	/* Play the rf1 */
 	fprintf(stderr, "\tplay_rf1ns(): playing rf1nscore (%d us)...\n", dur_rf1nscore);
@@ -3396,13 +3404,13 @@ STATUS prescanCore() {
 			
 			if (ro_type <= 2) {/* FSE - CPMG */
 				if (doNonSelRefocus)
-					ttotal += play_rf1ns(90 );
+					ttotal += play_rf1(FS_PI/2 );
 				else
-					ttotal += play_rf1(90 );
+					ttotal += play_rf1(FS_PI/2 );
 				}
 			else
 				//ttotal += play_rf1(0);
-				ttotal += play_rf1(rfspoil_flag*117*(echon + ndisdaqechoes));
+				ttotal += play_rf1(rfspoil_flag*rfphase_tab[echon]);
 
 
 			/* set rotation matrix for each echo readout */
@@ -3547,13 +3555,13 @@ STATUS scan( void )
 			fprintf(stderr, "scan(): playing flip pulse for disdaq train %d (t = %d / %.0f us)...\n", disdaqn, ttotal, pitscan);
 			if (ro_type <= 2) {/* FSE - CPMG */
 				if (doNonSelRefocus)
-					ttotal += play_rf1ns(90 );
+					ttotal += play_rf1(FS_PI/2 );
 				else
-					ttotal += play_rf1(90 );
+					ttotal += play_rf1(FS_PI/2 );
 				}
 			else
 				//ttotal += play_rf1(0);
-				ttotal += play_rf1(rfspoil_flag*117*(echon + ndisdaqechoes));
+				ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon]);
 
 			/* Load the DAB */		
 			fprintf(stderr, "scan(): loaddab(&echo1, %d, 0, DABSTORE, 0, DABOFF, PSD_LOAD_DAB_ALL)...\n", echon+1);
@@ -3783,12 +3791,12 @@ STATUS scan( void )
 					fprintf(stderr, "scan(): playing flip pulse for frame %d, shot %d, disdaq echo %d (t = %d / %.0f us)...\n", framen, shotn, echon, ttotal, pitscan);
 					if (ro_type <= 2) {/* FSE - CPMG */
 						if (doNonSelRefocus)
-							ttotal += play_rf1ns(90 );
+							ttotal += play_rf1(FS_PI/2 );
 						else
-							ttotal += play_rf1(90 );
+							ttotal += play_rf1(FS_PI/2 );
 					}
 					else
-						ttotal += play_rf1(rfspoil_flag*117*echon);
+						ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon]);
 
 					fprintf(stderr, "scan(): playing deadtime in place of readout for frame %d, shot %d, disdaq echo %d (%d us)...\n", framen, shotn, echon, dur_seqcore);
 					ttotal += play_deadtime(dur_seqcore);
@@ -3872,14 +3880,14 @@ STATUS scan( void )
 						}
 
 						if (doNonSelRefocus)
-							ttotal += play_rf1ns(90 * (ro_type <= 2) );
+							ttotal += play_rf1(FS_PI/2 * (ro_type <= 2) );
 						else
-							ttotal += play_rf1(90 * (ro_type <= 2));
+							ttotal += play_rf1(FS_PI/2 * (ro_type <= 2));
 					}
 					else  /* SPGR and SSFP cases */
 					{
-						ttotal += play_rf1(rfspoil_flag*117*(echon + ndisdaqechoes));
-						setphase(rfspoil_flag*117*(echon + ndisdaqechoes), &echo1, 0);
+						ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon + ndisdaqechoes]);
+						setiphase(rfspoil_flag * rfphase_tab[echon + ndisdaqechoes], &echo1, 0);
 					}
 
 					/* load the DAB */
@@ -4256,7 +4264,7 @@ int genviews() {
 
 	/* Loop through all views */
 	for(nfr=0; nfr < mrf_nframes; nfr++){
-		fprintf(stderr, "genviews(): rotation table tmtxtbl[][] entries for frame %d : \n", nfr);
+		/*fprintf(stderr, "genviews(): rotation table tmtxtbl[][] entries for frame %d : \n", nfr);*/
 		for (armn = 0; armn < narms; armn++) {
 			for (shotn = 0; shotn < opnshots; shotn++) {
 				for (echon = 0; echon < opetl; echon++) {
@@ -4310,7 +4318,7 @@ int genviews() {
 							
 							if (mrf_mode>0){
 								theta += prev_theta;
-								phi += prev_phi;
+								phi += prev_phi; 
 							}
 							/* theta = acos(fmod(echon*phi3D_1, 1.0));  */
 							/* phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0); */
@@ -4363,12 +4371,7 @@ int genviews() {
 		if ((mrf_mode >0) && (isOddFrame==1)) {
 			/* prev_theta = (float)(opnshots*opetl*narms*(nfr + 1))*phi3D_1 *2*M_PI / phi2D;  */
 			prev_theta = theta;  /* Additional theta rotation (x-axis) increment per frame: */
-
-			/* prev_phi = acos(1 - 2*(float)(opnshots*opetl*narms*(nfr + 1))/(float)(opnshots*opetl));  */
-			prev_phi = M_PI* (nfr+1) / nframes;  /* Additional phi rotation angles (z-axis) are now evenly spaced over the frames*/
-			/* Try this next time:   
-			prev_phi = nfr * GoldenAngle;
-			*/
+			prev_phi = GoldenAngle * (nfr/2) ;  /* phi rotation angles increment by golden ange at ever pair of frames*/
 
 			/* SOS case: rotate along z axis from frame to frame */
 			prev_rz += GoldenAngle;  /* increment by golden angle*/
@@ -4611,6 +4614,29 @@ float calc_hard_B1(int pw_rf, float flip_rf) {
 	return (flip_rf / 180.0 * M_PI / GAMMA / (float)(pw_rf*1e-6));
 }
 
+/* LHG 5/4/2026 - calculate phases for RF spoiling*/
+int calc_spgr_phs(int *irfphase, int ntab)
+{
+	float frfphase = 0.0; 
+    float rf_spoil_seed = 117.0;
+	int i;
+
+	fprintf(stderr,"\nUpdating SPGR phase table .... "); 
+
+	irfphase[0] = 0; 
+    for (i=1;i<ntab;i++) {
+        /* calculace phase for each shot in radians*/
+		frfphase += (float) rf_spoil_seed * M_PI / 180.0 * (float) i;
+		/* do the phase wrap from -pi to pi*/
+        frfphase = atan2 (sin(frfphase), cos(frfphase));  
+		/* convert to DAC units*/
+        irfphase[i] = (int)(frfphase/M_PI * (float)FS_PI);
+        }
+
+	fprintf(stderr,"Done .\n "); 
+
+	return 1;
+}
 /* LHG 12/6/12 : compute the linear phase increment of the PCASL pulses */
 int calc_pcasl_phases(int *iphase_tbl, float  myphase_increment, int nreps)
 {

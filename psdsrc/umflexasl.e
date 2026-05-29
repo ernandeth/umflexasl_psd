@@ -4314,8 +4314,9 @@ int genviews() {
 							
 							if (mrf_mode>0){
 								/* This is the GoldenMeans formula: */
-								/* theta = acos(fmod(echon*phi3D_1, 1.0));  */
-								/* phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0); */
+								theta = acos(fmod(echon*phi3D_1, 1.0));  
+								phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
+
 								theta += prev_theta;
 								phi += prev_phi; 
 							}

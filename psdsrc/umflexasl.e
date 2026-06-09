@@ -4314,12 +4314,21 @@ int genviews() {
 							
 							if (mrf_mode>0){
 								/* This is the GoldenMeans formula: */
+								/*
 								theta = acos(fmod(echon*phi3D_1, 1.0));  
 								phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
 
+								phi = acos(fmod(echon*phi3D_1, 1.0));  
+								theta = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
+								*/
+								phi = 2.0*acos(fmod(echon*phi3D_1, 1.0));  
+								theta = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
+								
 								theta += prev_theta;
 								phi += prev_phi; 
 							}
+
+							fprintf(stderr,"\nTHETA= %f   PHI = %f ", theta,  phi);
 							dz = 0.0;
 							break;
 						
@@ -4368,8 +4377,11 @@ int genviews() {
 		Increment the first of the rotations by the last rotation in the previous frame */
 		if ((mrf_mode >0) && (isOddFrame==1)) {
 			/* prev_theta = (float)(opnshots*opetl*narms*(nfr + 1))*phi3D_1 *2*M_PI / phi2D;  */
-			prev_theta = theta;  /* Additional theta rotation (x-axis) increment per frame: */
-			prev_phi = GoldenAngle * (nfr/2) ;  /* phi rotation angles increment by golden ange at ever pair of frames*/
+			/* prev_theta += M_PI*phi3D_1;   Additional theta rotation increment every pair of frames: */
+			/* prev_phi +=   M_PI*phi3D_2;   phi rotation angles increment by golden ratio at ever pair of frames*/
+
+			prev_phi += GoldenAngle;
+			prev_theta += GoldenAngle;
 
 			/* SOS case: rotate along z axis from frame to frame */
 			prev_rz += GoldenAngle;  /* increment by golden angle*/

@@ -4308,12 +4308,16 @@ int genviews() {
 							break;
 						case 2: /* 3D TGA */
 
-							/* using the fiboancci sphere formulasi (phylotaxis) */
+							/* using the fiboancci sphere formulasi (phylotaxis) - equation 8 in Li Feng paper*/
 							theta = (float)(armn*opetl + echon) * GoldenAngle; /* polar angle (x-axis) */
-							phi = acos(1 - 2*(float)(armn*opetl + echon)/(float)(narms*opetl)); /* azimuthal angle (z-axis)*/
+							phi = M_PI/2.0 * sqrt((float)(armn*opetl + echon)/(float)(narms*opetl));
 							
+							/* alt. calculation test*/
+							phi = 2.0*M_PI*(float)(echon)/(float)(opetl) + (float)(armn)*GoldenAngle;
+							theta = M_PI/2.0 * sqrt(echon/(float)(opetl));
+
 							if (mrf_mode>0){
-								/* This is the GoldenMeans formula: */
+								/* This is the GoldenMeans formula: - equation 7 in Li Feng paper*/
 								/*
 								theta = acos(fmod(echon*phi3D_1, 1.0));  
 								phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);

@@ -4284,7 +4284,7 @@ int genviews() {
 
 					/* the spiral in-out case rotates by only 90 degreesq  -
 					This happens in FSE and SSFP readouts*/
-					if (spiral_out_mode == 0 )
+					if ((spiral_out_mode == 0) && (spi_mode<2))
 						rz /= 2;
 					
 					switch (spi_mode) {

@@ -4223,6 +4223,7 @@ int genviews() {
 	int mrf_nframes = 1;
 	int nfr =0;
 	int isOddFrame = -1;
+	int rotation_count = 0;
 
 	fprintf(stderr, "genviews...():\n");
 
@@ -4262,6 +4263,7 @@ int genviews() {
 	for (n = 0; n < 9; n++) T_0[n] = (float)rsprot[0][n] / MAX_PG_WAMP;
 	orthonormalize(T_0, 3, 3);
 
+	rotation_count=0;
 	/* Loop through all views */
 	for(nfr=0; nfr < mrf_nframes; nfr++){
 		/*fprintf(stderr, "genviews(): rotation table tmtxtbl[][] entries for frame %d : \n", nfr);*/
@@ -4306,37 +4308,27 @@ int genviews() {
 							
 							dz = 0.0;
 							break;
-						case 2: /* 3D TGA */
+						case 2: /* 3D SPiral Projection */
 
 							/* using the fiboancci sphere formulasi (phylotaxis) - equation 8 in Li Feng paper*/
-							theta = (float)(armn*opetl + echon) * GoldenAngle; /* polar angle (x-axis) */
+							/* polar angle (x-axis) */
+							theta = (float)(armn*opetl + echon) * GoldenAngle; 
 							phi = M_PI/2.0 * sqrt((float)(armn*opetl + echon)/(float)(narms*opetl));
 							
-							/* alt. calculation test*/
+							/* alt. calculation (test)*/
 							phi = 2.0*M_PI*(float)(echon)/(float)(opetl) + (float)(armn)*GoldenAngle;
 							theta = M_PI/2.0 * sqrt(echon/(float)(opetl));
 
-							if (mrf_mode>0){
-								/* This is the GoldenMeans formula: - equation 7 in Li Feng paper*/
-								/*
-								theta = acos(fmod(echon*phi3D_1, 1.0));  
-								phi = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
-
-								phi = acos(fmod(echon*phi3D_1, 1.0));  
-								theta = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
-								*/
-								phi = 2.0*acos(fmod(echon*phi3D_1, 1.0));  
-								theta = 2.0*M_PI * fmod(echon*phi3D_2, 1.0);
-								
-								theta += prev_theta;
-								phi += prev_phi; 
-							}
+							/* Do the golden means calculation instead (test)*/
+							phi = 2.0*acos(fmod(rotation_count*phi3D_1, 1.0));  
+							theta = 2.0*M_PI * fmod(rotation_count*phi3D_2, 1.0);
 
 							fprintf(stderr,"\nTHETA= %f   PHI = %f ", theta,  phi);
 							dz = 0.0;
 							break;
 						
 					}
+
 
 					/* Calculate the transformation matrices */
 					Tz[8] = dz;
@@ -4363,6 +4355,9 @@ int genviews() {
 						tmtxtbl[rotidx][n] = (long)round(MAX_PG_WAMP*T[n]);
 					}
 					fprintf(fID_kviews, "\n");
+
+					/* Keep track of total number of echoes in the sequence*/
+					rotation_count++;
 					
 					/* debugging : 
 					fprintf(stderr,"rotidx ; %d -", rotidx);
@@ -4376,22 +4371,27 @@ int genviews() {
 				
 			}
 		}
-		
-		/* in MRF mode -  we use different rotations in each frame.
-		Increment the first of the rotations by the last rotation in the previous frame */
+
+		/* Repeat the rotation scheme at every frame - ie - restart the count */
+		if (mrf_mode == 0 ){
+			rotation_count=0;
+		}	
+
+		/* in MRF mode -  we use different rotations in each frame.*/ 
 		if ((mrf_mode >0) && (isOddFrame==1)) {
-			/* prev_theta = (float)(opnshots*opetl*narms*(nfr + 1))*phi3D_1 *2*M_PI / phi2D;  */
-			/* prev_theta += M_PI*phi3D_1;   Additional theta rotation increment every pair of frames: */
-			/* prev_phi +=   M_PI*phi3D_2;   phi rotation angles increment by golden ratio at ever pair of frames*/
-
-			prev_phi += GoldenAngle;
-			prev_theta += GoldenAngle;
-
 			/* SOS case: rotate along z axis from frame to frame */
 			prev_rz += GoldenAngle;  /* increment by golden angle*/
 		}
-		/* toggle the isOddFrame only in the mrf_mode case of 2*/
-		if (mrf_mode==2) isOddFrame *= -1;
+
+		/*BUT ... in MRF mode  2 , we change the rotations each PAIR of frames
+		- remember that each PAIR of control-label frames needs to have the same rotations */
+		if (mrf_mode==2) {
+			/* repeat previous frame's rotations by rewinding the rotation counter */
+			rotation_count -= (opetl*narms-1);
+
+			/*toggle the isOddFrame only in the mrf_mode case of 2*/
+			isOddFrame *= -1;
+		}
 	}
 
 	/* Close the files */

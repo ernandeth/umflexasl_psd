@@ -10,6 +10,8 @@ cp /usr/g/bin/kviews.txt /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}/kview
 cp /usr/g/bin/scaninfo.txt /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}/scaninfo${pfile}.txt
 cp /usr/g/bin/scansequence.txt /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}/scansequence${pfile}.txt
 mv /usr/g/mrraw/P${pfile}.7 /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}
+# Also transferring the scan archive
+scp vre:/data/arc/Closed/Exam${exam}/Series$5/'*.h5' /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}
 
 if ( -f /usr/g/bin/asl3dflex_scheduleidnum.txt ) then
 	set sid=`cat /usr/g/bin/asl3dflex_scheduleidnum.txt`
@@ -17,4 +19,4 @@ if ( -f /usr/g/bin/asl3dflex_scheduleidnum.txt ) then
 	rm /usr/g/bin/asl3dflex_scheduleidnum.txt
 endif
 
-xmessage -timeout 2 Moved pfile: P${pfile}.7 and trajectory files to /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}
+xmessage -timeout 2 Moved scanArchive, pfile: P${pfile}.7 and trajectory files to /usr/g/mrraw/asldata_e${exam}_s${series}_${pfile}

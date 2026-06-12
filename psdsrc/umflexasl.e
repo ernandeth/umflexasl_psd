@@ -4222,7 +4222,6 @@ int genviews() {
 	float element; 
 	int mrf_nframes = 1;
 	int nfr =0;
-	int isOddFrame = -1;
 	int rotation_count = 0;
 
 	fprintf(stderr, "genviews...():\n");
@@ -4323,7 +4322,7 @@ int genviews() {
 							phi = 2.0*acos(fmod(rotation_count*phi3D_1, 1.0));  
 							theta = 2.0*M_PI * fmod(rotation_count*phi3D_2, 1.0);
 
-							fprintf(stderr,"\nTHETA= %f   PHI = %f ", theta,  phi);
+							// fprintf(stderr,"\nTHETA= %f   PHI = %f ", theta,  phi);
 							dz = 0.0;
 							break;
 						
@@ -4366,11 +4365,10 @@ int genviews() {
 					}
 					fprintf(stderr, "\n");
 					*/
-				}
 
-				
-			}
-		}
+				}/*end the echon loop*/
+			}/*end the shotn loop */
+		}/*end the armn loop */
 
 		/* Repeat the rotation scheme at every frame - ie - restart the count */
 		if (mrf_mode == 0 ){
@@ -4378,21 +4376,20 @@ int genviews() {
 		}	
 
 		/* in MRF mode -  we use different rotations in each frame.*/ 
-		if ((mrf_mode >0) && (isOddFrame==1)) {
+		if (mrf_mode >0)  {
 			/* SOS case: rotate along z axis from frame to frame */
 			prev_rz += GoldenAngle;  /* increment by golden angle*/
 		}
 
 		/*BUT ... in MRF mode  2 , we change the rotations each PAIR of frames
 		- remember that each PAIR of control-label frames needs to have the same rotations */
-		if (mrf_mode==2) {
+		if ((mrf_mode==2) && !(nfr% 2))
+		{
 			/* repeat previous frame's rotations by rewinding the rotation counter */
-			rotation_count -= (opetl*narms-1);
-
-			/*toggle the isOddFrame only in the mrf_mode case of 2*/
-			isOddFrame *= -1;
+			rotation_count -= (opetl*narms);
+			//fprintf(stderr,"rotation num. %d\n", rotation_count);
 		}
-	}
+	}/*end the framen loop*/
 
 	/* Close the files */
 	fclose(fID_kviews);

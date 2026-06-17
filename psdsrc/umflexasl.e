@@ -400,7 +400,7 @@ int readprep(int id, int *len,
 float calc_sinc_B1(float cyc_rf, int pw_rf, float flip_rf);
 float calc_hard_B1(int pw_rf, float flip_rf);
 int calc_spgr_phs(int *irfphase, int ntab);
-int write_scan_info();
+/*int write_scan_info();*/
 
 /* function to fetch radout gradients from file */
 int readGrads(int id, float scale);
@@ -2083,7 +2083,7 @@ STATUS predownload( void )
 	rhrcctrl = 1; /* bit 7 (2^7 = 128) skips all recon */
 	rhexecctrl = 2; /* bit 1 (2^1 = 2) sets autolock of raw files + bit 3 (2^3 = 8) transfers images to disk */
 
-	write_scan_info();
+	/*write_scan_info();*/
 
 @inline Prescan.e PSpredownload	
 
@@ -3246,6 +3246,200 @@ ill target different velocities on different frames of the time series */
 	fclose(fID);
 	return 1;
 }	
+/* Function to write a log of the parameters used in the scan */
+int write_scan_info() {
+
+	FILE *finfo = fopen("scaninfo.txt","w");
+	fprintf(finfo, "Rx parameters:\n");
+	fprintf(finfo, "\t%-50s%20f %s\n", "X/Y FOV:", (float)opfov/10.0, "cm");
+	fprintf(finfo, "\t%-50s%20d \n", "Matrix size:", opxres);
+	fprintf(finfo, "\t%-50s%20f %s\n", "Nominal 3D slab thickness:", (float)(opslthick + opslspace)*SE_factor * opslquant/10.0, "cm"); 	
+
+	fprintf(finfo, "Hardware limits:\n");
+	fprintf(finfo, "\t%-50s%20f %s\n", "Max gradient amplitude:", GMAX, "G/cm");
+	fprintf(finfo, "\t%-50s%20f %s\n", "Max slew rate:", SLEWMAX, "G/cm/s");
+
+	fprintf(finfo, "Readout parameters:\n");
+	switch (ro_type) {
+		case 1: /* FSE */
+		case 2 :
+			fprintf(finfo, "\t%-50s%20s\n", "Readout type:", "FSE");
+			fprintf(finfo, "\t%-50s%20f %s\n", "Flip (inversion) angle:", opflip, "deg");
+			fprintf(finfo, "\t%-50s%20f %s\n", "Echo time:", (float)opte*1e-3, "ms");
+			fprintf(finfo, "\t%-50s%20d \n", "variable FA flag:", varflip );
+			fprintf(finfo, "\t%-50s%20d \n", "Non-selective rect pulse refocuser ", doNonSelRefocus );		
+			if (spiral_out_mode==0)
+				fprintf(finfo, "\t%-50s%20s\n", "Spiral Mode ", "In-Out" );
+			else
+				fprintf(finfo, "\t%-50s%20s\n", "Spiral Mode ", "Out Only" );
+			break;
+		case 3: /* SPGR */
+			fprintf(finfo, "\t%-50s%20s\n", "Readout type:", "SPGR");
+			fprintf(finfo, "\t%-50s%20f %s\n", "Flip angle:", opflip, "deg");
+			fprintf(finfo, "\t%-50s%20f %s\n", "Echo time:", (float)opte*1e-3, "ms");
+			fprintf(finfo, "\t%-50s%20f %s\n", "ESP (short TR):", (float)esp*1e-3, "ms");
+			fprintf(finfo, "\t%-50s%20s\n", "RF phase spoiling:", (rfspoil_flag) ? ("on") : ("off"));	
+			break;
+		case 4: /* bSSFP */
+			fprintf(finfo, "\t%-50s%20s\n", "Readout type:", "bSSFP");
+			fprintf(finfo, "\t%-50s%20f %s\n", "Flip angle:", opflip, "deg");
+			fprintf(finfo, "\t%-50s%20f %s\n", "Echo time:", (float)opte*1e-3, "ms");
+			fprintf(finfo, "\t%-50s%20f %s\n", "ESP (short TR):", (float)esp*1e-3, "ms");
+			break;
+	}
+	fprintf(finfo, "\t%-50s%20f %s\n", "Shot interval (long TR):", (float)optr*1e-3, "ms");
+	fprintf(finfo, "\t%-50s%20d\n", "ETL:", opetl);
+	fprintf(finfo, "\t%-50s%20d\n", "Number of frames:", nframes);
+	fprintf(finfo, "\t%-50s%20d\n", "Number of shots:", opnshots);
+	fprintf(finfo, "\t%-50s%20d\n", "Number of spiral arms:", narms);
+	fprintf(finfo, "\t%-50s%20d\n", "Number of disdaq echo trains:", ndisdaqtrains);
+	fprintf(finfo, "\t%-50s%20d\n", "Number of disdaq echoes:", ndisdaqechoes);
+	fprintf(finfo, "\t%-50s%20f %s\n", "Crusher area factor:", crushfac, "% kmax");
+	fprintf(finfo, "\t%-50s%20s\n", "Flow compensation:", (flowcomp_flag) ? ("on") : ("off"));	
+	if (kill_grads == 1)
+			fprintf(finfo, "\t%-50s%20s\n", "Spiral readout:", "off (FID only)");
+	else {
+		switch (spi_mode) {
+			case 0: /* SOS */
+				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "SOS");
+				fprintf(finfo, "\t%-50s%20f\n", "kz acceleration (SENSE) factor:", kz_acc);
+				break;
+			case 1: /* 2DTGA */
+				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "2DTGA");
+				break;
+			case 2: /* 3DTGA */
+				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "3DTGA");
+				break;
+			case 3: /* arbitrary rotations from file */
+				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "rotations from file");
+				break;
+			case 4: /* arbitrary rotations and trajectory from file */
+				fprintf(finfo, "\t%-50s%10s\n", "Projection mode:", "gradients + rotations from file");
+				break;
+		}
+		fprintf(finfo, "\t%-50s%20f\n", "VDS center acceleration factor:", vds_acc0);
+		fprintf(finfo, "\t%-50s%20f\n", "VDS edge acceleration factor:", vds_acc1);
+		fprintf(finfo, "\t%-50s%20d\n", "Number of navigator points:", nnav);
+	}
+	fprintf(finfo, "\t%-50s%20f %s\n", "Acquisition window duration:", acq_len*GRAD_UPDATE_TIME*1e-3, "ms");
+
+	if (mrf_mode > 0){
+		fprintf(finfo, "\nMRF MODE : %d . \n\tK-space trajectory is rotated from frame to frame (see kviews.txt) \n", mrf_mode);
+		if (mrf_mode==1)
+			fprintf(finfo, "\t%-50s%20s%05d \n", "MRF Labeling timing file in:", "mrfasl_schedules/ \n", mrf_sched_id );
+		fprintf(finfo, "\n------\n");
+	}
+
+	fprintf(finfo, "Prep parameters:\n");
+	switch (fatsup_mode) {
+		case 0: /* Off */
+			fprintf(finfo, "\t%-50s%20s\n", "Fat suppression:", "off");
+			break;
+		case 1: /* CHESS */
+			fprintf(finfo, "\t%-50s%20s\n", "Fat suppression:", "CHESS");
+			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression frequency offset:", fatsup_off, "Hz");
+			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression bandwidth:", fatsup_bw, "Hz");
+			break;
+		case 2: /* SPIR */
+			fprintf(finfo, "\t%-50s%20s\n", "Fat suppression:", "SPIR");
+			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression frequency offset:", fatsup_off, "Hz");
+			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression bandwidth:", fatsup_bw, "Hz");
+			fprintf(finfo, "\t%-50s%20f %s\n", "SPIR flip angle:", spir_fa, "deg");
+			fprintf(finfo, "\t%-50s%20f %s\n", "SPIR inversion time:", (float)spir_ti*1e-3, "ms");
+			break;
+	}
+
+	if (prep1_id == 0)
+		fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse:", "off");
+	else {
+		fprintf(finfo, "\t%-50s%20d\n", "Prep 1 pulse id:", prep1_id);
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 post-labeling delay:", (float)prep1_pld*1e-3, "ms");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 max B1 amplitude:", prep1_rfmax, "mG");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 max gradient amplitude:", prep1_gmax, "G/cm");
+		switch (prep1_mod) {
+			case 1:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "1 (LCLC)");
+				break;
+			case 2:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "2 (CLCL)");
+				break;
+			case 3:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "3 (LLLL)");
+				break;
+			case 4:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "4 (CCCC)");
+				break;
+		}
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 BGS 1 delay:", (float)prep1_tbgs1*1e-3, "ms");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 BGS 2 delay:", (float)prep1_tbgs2*1e-3, "ms");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 BGS 3 delay:", (float)prep1_tbgs3*1e-3, "ms");
+	}
+	if (prep2_id == 0)
+		fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse:", "off");
+	else {
+		fprintf(finfo, "\t%-50s%20d\n", "Prep 2 pulse id:", prep2_id);
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 post-labeling delay:", (float)prep2_pld*1e-3, "ms");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 max B1 amplitude:", prep2_rfmax, "mG");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 max gradient amplitude:", prep2_gmax, "G/cm");
+		switch (prep2_mod) {
+			case 1:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "1 (LCLC)");
+				break;
+			case 2:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "2 (CLCL)");
+				break;
+			case 3:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "3 (LLLL)");
+				break;
+			case 4:
+				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "4 (CCCC)");
+				break;
+		}
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 BGS 1 delay:", (float)prep2_tbgs1*1e-3, "ms");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 BGS 2 delay:", (float)prep2_tbgs2*1e-3, "ms");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 BGS 3 delay:", (float)prep2_tbgs3*1e-3, "ms");
+	}
+	if (presat_flag == 0)
+		fprintf(finfo, "\t%-50s%20s\n", "Presaturation pulse:", "off");
+	else {
+		fprintf(finfo, "\t%-50s%20s\n", "Presaturation pulse:", "on");
+		fprintf(finfo, "\t%-50s%20f %s\n", "Presaturation delay:", (float)presat_delay*1e-3, "ms");
+	}
+
+	if (pcasl_flag){
+		fprintf(finfo, "PCASL prep cvs:\n");
+		fprintf(finfo, "\t%-50s%20d\n", "pcasl_flag", pcasl_flag);
+		fprintf(finfo, "\t%-50s%20f\n", "pcasl_distance", pcasl_distance);
+		fprintf(finfo, "\t%-50s%20f\n", "pcasl_delta_phs", pcasl_delta_phs);
+		fprintf(finfo, "\t%-50s%20f\n", "pcasl_delta_phs_correction", pcasl_delta_phs_correction);
+		fprintf(finfo, "\t%-50s%20d\n", "pcasl_pld (us)", pcasl_pld);
+		fprintf(finfo, "\t%-50s%20d\n", "pcasl_duration (us)", pcasl_duration);
+		fprintf(finfo, "\t%-50s%20d\n", "pcasl_tbgs1 (us)", pcasl_tbgs1);
+		fprintf(finfo, "\t%-50s%20d\n", "pcasl_tbgs2 (us)", pcasl_tbgs2);
+		fprintf(finfo, "\t%-50s%20f\n", "pcasl_Gamp", pcasl_Gamp);
+		fprintf(finfo, "\t%-50s%20f\n", "pcasl_Gave", pcasl_Gave);
+		fprintf(finfo, "\t%-50s%20d\n", "pcasl_period (us)", pcasl_period);
+		fprintf(finfo, "\t%-50s%20f\n", "pcasl_RFamp (mG)", pcasl_RFamp);
+
+		if(pcasl_calib){
+			fprintf(finfo, "\t%-50s%20d\n", "Phase calibration run", pcasl_calib);
+			fprintf(finfo, "\t%-50s%20f\n", "Cal. phase increment", phs_cal_step);
+			fprintf(finfo, "\t%-50s%20d\n", "N. frames per cal. increment", pcasl_calib_frames);
+		}
+	}
+
+	if(doVelSpectrum){
+		fprintf(finfo, "Collecting Velocity Spectrum:\n");
+		fprintf(finfo, "\t%-50s%20d\n", "VS Type (FTVS phase(1) BIR8 venc(2))", doVelSpectrum); 
+		fprintf(finfo, "\t%-50s%20d\n", "N. frames per encode/target_velocity", vspectrum_Navgs);
+		fprintf(finfo, "\t%-50s%20f\n", "Velocity target increments (cm/s) if VS type 1", vel_target_incr); 
+		fprintf(finfo, "\t%-50s%20f\n", "Velocity encoding Grad increments (G/cm) if VS type 2", prep2_delta_gmax); 
+	}
+
+	fclose(finfo);
+	return 1;
+}
+
 
 /* function for playing prescan sequence : MOSTLY the same as the scan loop */
 STATUS prescanCore() {
@@ -3934,6 +4128,8 @@ STATUS scan( void )
 
 	/* clear memory for the velocity spectrum buffers - if needed*/
 	FreeNode(s_phsbuffer);
+
+	write_scan_info();
 
 	fprintf(stderr, "scan(): reached end of scan, sending endpass packet (t = %d / %.0f us)...\n", ttotal, pitscan);
 	play_endscan();
@@ -4698,200 +4894,6 @@ int make_pcasl_schedule(int *pcasl_lbltbl, int *pcasl_pldtbl, int *pcasl_tbgs1tb
 	return 1;
 }	
 
-
-
-int write_scan_info() {
-
-	FILE *finfo = fopen("scaninfo.txt","w");
-	fprintf(finfo, "Rx parameters:\n");
-	fprintf(finfo, "\t%-50s%20f %s\n", "X/Y FOV:", (float)opfov/10.0, "cm");
-	fprintf(finfo, "\t%-50s%20d \n", "Matrix size:", opxres);
-	fprintf(finfo, "\t%-50s%20f %s\n", "Nominal 3D slab thickness:", (float)(opslthick + opslspace)*SE_factor * opslquant/10.0, "cm"); 	
-
-	fprintf(finfo, "Hardware limits:\n");
-	fprintf(finfo, "\t%-50s%20f %s\n", "Max gradient amplitude:", GMAX, "G/cm");
-	fprintf(finfo, "\t%-50s%20f %s\n", "Max slew rate:", SLEWMAX, "G/cm/s");
-
-	fprintf(finfo, "Readout parameters:\n");
-	switch (ro_type) {
-		case 1: /* FSE */
-		case 2 :
-			fprintf(finfo, "\t%-50s%20s\n", "Readout type:", "FSE");
-			fprintf(finfo, "\t%-50s%20f %s\n", "Flip (inversion) angle:", opflip, "deg");
-			fprintf(finfo, "\t%-50s%20f %s\n", "Echo time:", (float)opte*1e-3, "ms");
-			fprintf(finfo, "\t%-50s%20d \n", "variable FA flag:", varflip );
-			fprintf(finfo, "\t%-50s%20d \n", "Non-selective rect pulse refocuser ", doNonSelRefocus );		
-			if (spiral_out_mode==0)
-				fprintf(finfo, "\t%-50s%20s\n", "Spiral Mode ", "In-Out" );
-			else
-				fprintf(finfo, "\t%-50s%20s\n", "Spiral Mode ", "Out Only" );
-			break;
-		case 3: /* SPGR */
-			fprintf(finfo, "\t%-50s%20s\n", "Readout type:", "SPGR");
-			fprintf(finfo, "\t%-50s%20f %s\n", "Flip angle:", opflip, "deg");
-			fprintf(finfo, "\t%-50s%20f %s\n", "Echo time:", (float)opte*1e-3, "ms");
-			fprintf(finfo, "\t%-50s%20f %s\n", "ESP (short TR):", (float)esp*1e-3, "ms");
-			fprintf(finfo, "\t%-50s%20s\n", "RF phase spoiling:", (rfspoil_flag) ? ("on") : ("off"));	
-			break;
-		case 4: /* bSSFP */
-			fprintf(finfo, "\t%-50s%20s\n", "Readout type:", "bSSFP");
-			fprintf(finfo, "\t%-50s%20f %s\n", "Flip angle:", opflip, "deg");
-			fprintf(finfo, "\t%-50s%20f %s\n", "Echo time:", (float)opte*1e-3, "ms");
-			fprintf(finfo, "\t%-50s%20f %s\n", "ESP (short TR):", (float)esp*1e-3, "ms");
-			break;
-	}
-	fprintf(finfo, "\t%-50s%20f %s\n", "Shot interval (long TR):", (float)optr*1e-3, "ms");
-	fprintf(finfo, "\t%-50s%20d\n", "ETL:", opetl);
-	fprintf(finfo, "\t%-50s%20d\n", "Number of frames:", nframes);
-	fprintf(finfo, "\t%-50s%20d\n", "Number of shots:", opnshots);
-	fprintf(finfo, "\t%-50s%20d\n", "Number of spiral arms:", narms);
-	fprintf(finfo, "\t%-50s%20d\n", "Number of disdaq echo trains:", ndisdaqtrains);
-	fprintf(finfo, "\t%-50s%20d\n", "Number of disdaq echoes:", ndisdaqechoes);
-	fprintf(finfo, "\t%-50s%20f %s\n", "Crusher area factor:", crushfac, "% kmax");
-	fprintf(finfo, "\t%-50s%20s\n", "Flow compensation:", (flowcomp_flag) ? ("on") : ("off"));	
-	if (kill_grads == 1)
-			fprintf(finfo, "\t%-50s%20s\n", "Spiral readout:", "off (FID only)");
-	else {
-		switch (spi_mode) {
-			case 0: /* SOS */
-				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "SOS");
-				fprintf(finfo, "\t%-50s%20f\n", "kz acceleration (SENSE) factor:", kz_acc);
-				break;
-			case 1: /* 2DTGA */
-				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "2DTGA");
-				break;
-			case 2: /* 3DTGA */
-				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "3DTGA");
-				break;
-			case 3: /* arbitrary rotations from file */
-				fprintf(finfo, "\t%-50s%20s\n", "Projection mode:", "rotations from file");
-				break;
-			case 4: /* arbitrary rotations and trajectory from file */
-				fprintf(finfo, "\t%-50s%10s\n", "Projection mode:", "gradients + rotations from file");
-				break;
-		}
-		fprintf(finfo, "\t%-50s%20f\n", "VDS center acceleration factor:", vds_acc0);
-		fprintf(finfo, "\t%-50s%20f\n", "VDS edge acceleration factor:", vds_acc1);
-		fprintf(finfo, "\t%-50s%20d\n", "Number of navigator points:", nnav);
-	}
-	fprintf(finfo, "\t%-50s%20f %s\n", "Acquisition window duration:", acq_len*GRAD_UPDATE_TIME*1e-3, "ms");
-
-	if (mrf_mode > 0){
-		fprintf(finfo, "\nMRF MODE : %d . \n\tK-space trajectory is rotated from frame to frame (see kviews.txt) \n", mrf_mode);
-		if (mrf_mode==1)
-			fprintf(finfo, "\t%-50s%20s%05d \n", "MRF Labeling timing file in:", "mrfasl_schedules/ \n", mrf_sched_id );
-		fprintf(finfo, "\n------\n");
-	}
-
-	fprintf(finfo, "Prep parameters:\n");
-	switch (fatsup_mode) {
-		case 0: /* Off */
-			fprintf(finfo, "\t%-50s%20s\n", "Fat suppression:", "off");
-			break;
-		case 1: /* CHESS */
-			fprintf(finfo, "\t%-50s%20s\n", "Fat suppression:", "CHESS");
-			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression frequency offset:", fatsup_off, "Hz");
-			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression bandwidth:", fatsup_bw, "Hz");
-			break;
-		case 2: /* SPIR */
-			fprintf(finfo, "\t%-50s%20s\n", "Fat suppression:", "SPIR");
-			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression frequency offset:", fatsup_off, "Hz");
-			fprintf(finfo, "\t%-50s%20d %s\n", "Fat suppression bandwidth:", fatsup_bw, "Hz");
-			fprintf(finfo, "\t%-50s%20f %s\n", "SPIR flip angle:", spir_fa, "deg");
-			fprintf(finfo, "\t%-50s%20f %s\n", "SPIR inversion time:", (float)spir_ti*1e-3, "ms");
-			break;
-	}
-
-	if (prep1_id == 0)
-		fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse:", "off");
-	else {
-		fprintf(finfo, "\t%-50s%20d\n", "Prep 1 pulse id:", prep1_id);
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 post-labeling delay:", (float)prep1_pld*1e-3, "ms");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 max B1 amplitude:", prep1_rfmax, "mG");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 max gradient amplitude:", prep1_gmax, "G/cm");
-		switch (prep1_mod) {
-			case 1:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "1 (LCLC)");
-				break;
-			case 2:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "2 (CLCL)");
-				break;
-			case 3:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "3 (LLLL)");
-				break;
-			case 4:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 1 pulse modulation:", "4 (CCCC)");
-				break;
-		}
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 BGS 1 delay:", (float)prep1_tbgs1*1e-3, "ms");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 BGS 2 delay:", (float)prep1_tbgs2*1e-3, "ms");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 1 BGS 3 delay:", (float)prep1_tbgs3*1e-3, "ms");
-	}
-	if (prep2_id == 0)
-		fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse:", "off");
-	else {
-		fprintf(finfo, "\t%-50s%20d\n", "Prep 2 pulse id:", prep2_id);
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 post-labeling delay:", (float)prep2_pld*1e-3, "ms");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 max B1 amplitude:", prep2_rfmax, "mG");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 max gradient amplitude:", prep2_gmax, "G/cm");
-		switch (prep2_mod) {
-			case 1:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "1 (LCLC)");
-				break;
-			case 2:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "2 (CLCL)");
-				break;
-			case 3:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "3 (LLLL)");
-				break;
-			case 4:
-				fprintf(finfo, "\t%-50s%20s\n", "Prep 2 pulse modulation:", "4 (CCCC)");
-				break;
-		}
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 BGS 1 delay:", (float)prep2_tbgs1*1e-3, "ms");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 BGS 2 delay:", (float)prep2_tbgs2*1e-3, "ms");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Prep 2 BGS 3 delay:", (float)prep2_tbgs3*1e-3, "ms");
-	}
-	if (presat_flag == 0)
-		fprintf(finfo, "\t%-50s%20s\n", "Presaturation pulse:", "off");
-	else {
-		fprintf(finfo, "\t%-50s%20s\n", "Presaturation pulse:", "on");
-		fprintf(finfo, "\t%-50s%20f %s\n", "Presaturation delay:", (float)presat_delay*1e-3, "ms");
-	}
-
-	if (pcasl_flag){
-		fprintf(finfo, "PCASL prep cvs:\n");
-		fprintf(finfo, "\t%-50s%20d\n", "pcasl_flag", pcasl_flag);
-		fprintf(finfo, "\t%-50s%20f\n", "pcasl_distance", pcasl_distance);
-		fprintf(finfo, "\t%-50s%20f\n", "pcasl_delta_phs", pcasl_delta_phs);
-		fprintf(finfo, "\t%-50s%20f\n", "pcasl_delta_phs_correction", pcasl_delta_phs_correction);
-		fprintf(finfo, "\t%-50s%20d\n", "pcasl_pld (us)", pcasl_pld);
-		fprintf(finfo, "\t%-50s%20d\n", "pcasl_duration (us)", pcasl_duration);
-		fprintf(finfo, "\t%-50s%20d\n", "pcasl_tbgs1 (us)", pcasl_tbgs1);
-		fprintf(finfo, "\t%-50s%20d\n", "pcasl_tbgs2 (us)", pcasl_tbgs2);
-		fprintf(finfo, "\t%-50s%20f\n", "pcasl_Gamp", pcasl_Gamp);
-		fprintf(finfo, "\t%-50s%20f\n", "pcasl_Gave", pcasl_Gave);
-		fprintf(finfo, "\t%-50s%20d\n", "pcasl_period (us)", pcasl_period);
-		fprintf(finfo, "\t%-50s%20f\n", "pcasl_RFamp (mG)", pcasl_RFamp);
-
-		if(pcasl_calib){
-			fprintf(finfo, "\t%-50s%20d\n", "Phase calibration run", pcasl_calib);
-			fprintf(finfo, "\t%-50s%20f\n", "Cal. phase increment", phs_cal_step);
-			fprintf(finfo, "\t%-50s%20d\n", "N. frames per cal. increment", pcasl_calib_frames);
-		}
-	}
-
-	if(doVelSpectrum){
-		fprintf(finfo, "Collecting Velocity Spectrum:\n");
-		fprintf(finfo, "\t%-50s%20d\n", "VS Type (FTVS phase(1) BIR8 venc(2))", doVelSpectrum); 
-		fprintf(finfo, "\t%-50s%20d\n", "N. frames per encode/target_velocity", vspectrum_Navgs);
-		fprintf(finfo, "\t%-50s%20f\n", "Velocity target increments (cm/s) if VS type 1", vel_target_incr); 
-		fprintf(finfo, "\t%-50s%20f\n", "Velocity encoding Grad increments (G/cm) if VS type 2", prep2_delta_gmax); 
-	}
-
-	fclose(finfo);
-	return 1;
-}
-
+/* write_scan_info def was here */
 /************************ END OF UMVSASL.E ******************************/
 

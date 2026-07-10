@@ -1422,17 +1422,17 @@ STATUS predownload( void )
 
 
 	/* slab selective presat spoilers */
-    pw_rfps1ssc = tmp_pw;
+	pw_rfps1ssc = tmp_pw;
 	pw_rfps1ssca = tmp_pwa;
 	pw_rfps1sscd = tmp_pwd;
 	a_rfps1ssc = tmp_a;
 	
-    pw_rfps2ssc = tmp_pw;
+	pw_rfps2ssc = tmp_pw;
 	pw_rfps2ssca = tmp_pwa;
 	pw_rfps2sscd = tmp_pwd;
 	a_rfps2ssc = tmp_a;
 	
-    pw_rfps3ssc = tmp_pw;
+	pw_rfps3ssc = tmp_pw;
 	pw_rfps3ssca = tmp_pwa;
 	pw_rfps3sscd = tmp_pwd;
 	a_rfps3ssc = tmp_a;
@@ -1448,24 +1448,23 @@ STATUS predownload( void )
 	pw_gzrffsspoild = tmp_pwd;
 	a_gzrffsspoil = tmp_a ;
 
+	/* set trap1 and trap2 are the crushers around the refocuser pulse (for FSE case) */
 	pw_gzrf1trap1 = tmp_pw;
 	pw_gzrf1trap1a = tmp_pwa;
 	pw_gzrf1trap1d = tmp_pwd;
 	a_gzrf1trap1 = tmp_a;
 
-	/* set trap2 as a crusher (for FSE case) */
 	pw_gzrf1trap2 = tmp_pw;
 	pw_gzrf1trap2a = tmp_pwa;
 	pw_gzrf1trap2d = tmp_pwd;
 	a_gzrf1trap2 = tmp_a;
 	
-	/* Now for the rect non sel refocuser*/
+	/* Now for the rect non sel refocuser case*/
 	pw_rf1trap1ns = tmp_pw;
 	pw_rf1trap1nsa = tmp_pwa;
 	pw_rf1trap1nsd = tmp_pwd;
 	a_rf1trap1ns = tmp_a;
 
-	/* set trap2 as a crusher (for FSE case) */
 	pw_rf1trap2ns = tmp_pw;
 	pw_rf1trap2nsa = tmp_pwa;
 	pw_rf1trap2nsd = tmp_pwd;
@@ -1480,8 +1479,10 @@ STATUS predownload( void )
 	pw_gzrf0ra = tmp_pwa;
 	pw_gzrf0rd = tmp_pwd;
 	a_gzrf0r = tmp_a;
-	
-	if (ro_type > 2) { /* GRE modes - make trap2 a slice select refocuser */
+
+	if (ro_type > 2) { 
+		/* GRE mode: rf1 does the excitation, instead of rf0.   rf0 does not get played at all */	
+		/* GRE modes - make trap2 a slice select refocuser */
 		pw_gzrf1trap2 = tmp_pw;
 		pw_gzrf1trap2a = tmp_pwa;
 		pw_gzrf1trap2d = tmp_pwd;
@@ -4039,39 +4040,39 @@ STATUS scan( void )
 							flip angles in degrees: */
    							arf1_var = 0.0044*pow(echon+1,4)   - 0.2521*pow(echon+1,3) +   5.3544 *pow(echon+1,2) - 45.0296*(echon+1) + 158.0661;
 
-							if(doNonSelRefocus)
-							{
-								// scale to relative scale of rho channel [0,1]
-								arf1_var *= a_rf1ns / 180.0;
-
-								//arf1_var *= (arf180ns - a_rf1ns) / tmpmax; /* scale */
-								//arf1_var += a_rf1ns;  /* shift up */
-
-
-								/* but we cap it at 150 degree pulse */
-								if (arf1_var > arf180ns * 0.833 ) arf1_var = arf180ns * 0.833;;
-
-								/* set the transmitter gain after the adjustments */
-								setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
-								fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
-							}
-							else
-							{
-								// scale to relative scale of rho channel [0,1]
-								arf1_var *= a_rf1 / 180.0;
-
-								//arf1_var *= (arf180 - a_rf1) / tmpmax; /* scale */
-								//arf1_var += a_rf1;  /* shift up */
-
-								/* but we cap it at 150 degree pulse */
-								if (arf1_var > arf180 * 0.833) arf1_var = arf180 * 0.833;;
-
-								/* set the transmitter gain after the adjustments */
-								setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
-								fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
-							}
-
 						}
+						if(doNonSelRefocus)
+						{
+							// scale to relative scale of rho channel [0,1]
+							arf1_var *= a_rf1ns / 180.0;
+
+							//arf1_var *= (arf180ns - a_rf1ns) / tmpmax; /* scale */
+							//arf1_var += a_rf1ns;  /* shift up */
+
+
+							/* but we cap it at 150 degree pulse */
+							if (arf1_var > arf180ns * 0.833 ) arf1_var = arf180ns * 0.833;;
+
+							/* set the transmitter gain after the adjustments */
+							setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
+							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+						}
+						else
+						{
+							// scale to relative scale of rho channel [0,1]
+							arf1_var *= a_rf1 / 180.0;
+
+							//arf1_var *= (arf180 - a_rf1) / tmpmax; /* scale */
+							//arf1_var += a_rf1;  /* shift up */
+
+							/* but we cap it at 150 degree pulse */
+							if (arf1_var > arf180 * 0.833) arf1_var = arf180 * 0.833;;
+
+							/* set the transmitter gain after the adjustments */
+							setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
+							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+						}
+
 
 						if (doNonSelRefocus)
 							ttotal += play_rf1(FS_PI/2 * (ro_type <= 2) );

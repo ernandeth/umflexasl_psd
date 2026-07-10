@@ -4002,44 +4002,29 @@ STATUS scan( void )
 				for (echon = 0; echon < opetl; echon++) {
 					
 					fprintf(stderr, "scan(): playing flip pulse for frame %d, shot %d, echo %d (t = %d / %.0f us)...\n", framen, shotn, echon, ttotal, pitscan);
-					if (ro_type <= 2){ /* FSE - CPMG */
-						
-						/* The default is to use a constant refocuser flip angle*/
+					if (ro_type <= 2){ 
+						/* FSE - CPMG */
+						/* For FSE case, include variable flip angle refocusers
+						   The default is to use a constant refocuser flip angle*/
+
 						arf1_var = a_rf1;
 
 						if (echon==0){
 							/*using a "stabilizer" for the first of the echoes in the train
-								flip[0] = 90 + (vflip)/2         
-							the rest of them are whatever the refocuser flip angle is: 
-								flip[n] = vflip            
-							eg1: 
-								90x - 150y - 120y - 120y -120y ...
-							eg2: 
-								90x - 180y - 180y - 180y -180y ...  */
+							  flip[0] = 90 + (vflip)/2         
+							  the rest of them are whatever the refocuser flip angle is: 
+							  flip[n] = vflip            
+								eg1: opflip = 120
+									-->	90x - 150y - 120y - 120y -120y ...
+								eg2: opflip = 180
+									-->	90x - 180y - 180y - 180y -180y ...  */
 
-							arf1_var = (arf180 + a_rf1)/2;
-							
 							if(doNonSelRefocus)
-							{
 								arf1_var = (arf180ns + a_rf1ns)/2;
-								// scale to relative scale of rho channel [0,1]
-								arf1_var *= a_rf1ns / 180.0;
-
-								/* set the transmitter gain after the adjustments */
-								setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
-								fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
-							}
 							else
-							{
-								/* set the transmitter gain after the adjustments */
-								setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
-								fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
-							}
-
-
+								arf1_var = (arf180 + a_rf1)/2;
 						}
-
-						if(varflip ) {
+						if(varflip) {
 							/* variable flip angle refocuser pulses to get more signal 
 							   - linearly increasing schedule */
 							/* arf1_var = a_rf1 + (float)echon*(arf180 - a_rf1)/(float)(opetl-1); */
@@ -4047,9 +4032,9 @@ STATUS scan( void )
 							/* in VFA, the first refocusers are higher - trying to approximate that here*/
 							/* if(echon==0) arf1_var = (arf180 + a_rf1)/2.0;  */
 
-							/* New approach: do a quadratic schedule with 
-							   the minimum of parabola is opflip and will occur at one quarter of the way in the echo train  
-							   y = (x-xmax/4)^2 */
+							/* New approach: do a quadrative schedule with 
+							   the minimum of parabola occurring at one quarter of the way in the echo train 
+							   Note - the min value will be a_rf1ns (or opflip) */
 							//arf1_var = ((float)(echon) - (float)(opetl)/4.0) * ((float)(echon) - (float)(opetl)/4.0);  /* shifted parabola */
 							//tmpmax = ((float)(opetl) - (float)(opetl)/4.0) *  ((float)(opetl) - (float)(opetl)/4.0) ;    /* max value of the parabola */
 
@@ -4057,45 +4042,42 @@ STATUS scan( void )
 							   flip angles in degrees: */
 							arf1_var = 0.0044*pow(echon+1,4)   - 0.2521*pow(echon+1,3) +   5.3544 *pow(echon+1,2) - 45.0296*(echon+1) + 158.0661;
 
+							/* cap the RF amplitude at 150 degree pulse */
+							if (arf1_var > 150) arf1_var = 150;
+
 							if(doNonSelRefocus)
 							{
 								// scale to relative scale of rho channel [0,1]
-								arf1_var *= a_rf1ns / 180.0;
+								arf1_var *= arf180ns / 180.0;
 
-								//arf1_var *= (arf180ns - a_rf1ns) / tmpmax; /* scale */
+								//arf1_var *= (arf180ns - a_rf1ns) / tmpmax; /* scale to the range from min to 180 */
 								//arf1_var += a_rf1ns;  /* shift up */
 
-
-								/* but we cap it at 150 degree pulse */
-								if (arf1_var > arf180ns * 0.833 ) arf1_var = arf180ns * 0.833;;
-
-								/* set the transmitter gain after the adjustments */
-								setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
-								fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
 							}
 							else
 							{
 								// scale to relative scale of rho channel [0,1]
-								arf1_var *= a_rf1 / 180.0;
+								arf1_var *= arf180 / 180.0;
 
 								//arf1_var *= (arf180 - a_rf1) / tmpmax; /* scale */
 								//arf1_var += a_rf1;  /* shift up */
 
-								/* but we cap it at 150 degree pulse */
-								if (arf1_var > arf180 * 0.833) arf1_var = arf180 * 0.833;;
-
-								/* set the transmitter gain after the adjustments */
-								setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
-								fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
 							}
 
 						}
-
-						if (doNonSelRefocus)
-							ttotal += play_rf1(FS_PI/2 * (ro_type <= 2) );
+						/* set the transmitter gain after the adjustments */
+						if(doNonSelRefocus)
+						{
+							setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
+							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+						}
 						else
-							ttotal += play_rf1(FS_PI/2 * (ro_type <= 2));
+						{
+							setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
+							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+						}
 					}
+
 					else  /* SPGR and SSFP cases */
 					{
 						ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon + ndisdaqechoes]);

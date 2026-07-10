@@ -3526,6 +3526,7 @@ STATUS prescanCore() {
 				The default is to use a constant refocuser flip angle*/
 				
 				arf1_var = a_rf1;
+				if(doNonSelRefocus) arf1_var = a_rf1ns;
 			
 				if (echon==0){
 					/*using a "stabilizer" for the first of the echoes in the train
@@ -3541,6 +3542,7 @@ STATUS prescanCore() {
 						arf1_var = (arf180ns + a_rf1ns)/2;
 					else
 						arf1_var = (arf180 + a_rf1)/2;
+					fprintf(stderr,"\nStabilzer: adjusting flip ang: %f \n", arf1_var ); 
 				}
 				if(varflip) {
 					/* variable flip angle refocuser pulses to get more signal 
@@ -3557,42 +3559,32 @@ STATUS prescanCore() {
 					//tmpmax = ((float)(opetl) - (float)(opetl)/4.0) *  ((float)(opetl) - (float)(opetl)/4.0) ;    /* max value of the parabola */
 
 					/* New: flip angle schedule is fourth order polynomial based on data by Zhao 1997 , DOI: 10.1002/mrm.27118
-					flip angles in degrees: */
+					*** NOTE: these are  flip angles in degrees: */
    					arf1_var = 0.0044*pow(echon+1,4)   - 0.2521*pow(echon+1,3) +   5.3544 *pow(echon+1,2) - 45.0296*(echon+1) + 158.0661;
 
 					/* cap the RF amplitude at 150 degree pulse */
 					if (arf1_var > 150) arf1_var = 150;
 
+					// Convert from degrees to  relative scale of rho channel [0,1]
 					if(doNonSelRefocus)
 					{
-						// scale to relative scale of rho channel [0,1]
 						arf1_var *= arf180ns / 180.0;
-					
-						//arf1_var *= (arf180ns - a_rf1ns) / tmpmax; /* scale to the range from min to 180 */
-						//arf1_var += a_rf1ns;  /* shift up */
-
 					}
 					else
 					{
-						// scale to relative scale of rho channel [0,1]
 						arf1_var *= arf180 / 180.0;
-
-						//arf1_var *= (arf180 - a_rf1) / tmpmax; /* scale */
-						//arf1_var += a_rf1;  /* shift up */
-
 					}
 
+					fprintf(stderr,"\nadjusting var flip ang: %f \n", arf1_var ); 
 				}
 				/* set the transmitter gain after the adjustments */
 				if(doNonSelRefocus)
 				{
 					setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
-					fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
 				}
 				else
 				{
 					setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
-					fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
 				}
 			}
 			
@@ -3600,7 +3592,7 @@ STATUS prescanCore() {
 			
 			if (ro_type <= 2) {/* FSE - CPMG */
 				if (doNonSelRefocus)
-					ttotal += play_rf1(FS_PI/2 );
+					ttotal += play_rf1ns(FS_PI/2 );
 				else
 					ttotal += play_rf1(FS_PI/2 );
 				}
@@ -3751,7 +3743,7 @@ STATUS scan( void )
 			fprintf(stderr, "scan(): playing flip pulse for disdaq train %d (t = %d / %.0f us)...\n", disdaqn, ttotal, pitscan);
 			if (ro_type <= 2) {/* FSE - CPMG */
 				if (doNonSelRefocus)
-					ttotal += play_rf1(FS_PI/2 );
+					ttotal += play_rf1ns(FS_PI/2 );
 				else
 					ttotal += play_rf1(FS_PI/2 );
 				}
@@ -3987,7 +3979,7 @@ STATUS scan( void )
 					fprintf(stderr, "scan(): playing flip pulse for frame %d, shot %d, disdaq echo %d (t = %d / %.0f us)...\n", framen, shotn, echon, ttotal, pitscan);
 					if (ro_type <= 2) {/* FSE - CPMG */
 						if (doNonSelRefocus)
-							ttotal += play_rf1(FS_PI/2 );
+							ttotal += play_rf1ns(FS_PI/2 );
 						else
 							ttotal += play_rf1(FS_PI/2 );
 					}
@@ -4007,7 +3999,10 @@ STATUS scan( void )
 						/* For FSE case, include variable flip angle refocusers
 						   The default is to use a constant refocuser flip angle*/
 
+						/* calculations in RELATIVE units for RHO channel */
+
 						arf1_var = a_rf1;
+						if(doNonSelRefocus) arf1_var = a_rf1ns;
 
 						if (echon==0){
 							/*using a "stabilizer" for the first of the echoes in the train
@@ -4018,11 +4013,12 @@ STATUS scan( void )
 									-->	90x - 150y - 120y - 120y -120y ...
 								eg2: opflip = 180
 									-->	90x - 180y - 180y - 180y -180y ...  */
-
 							if(doNonSelRefocus)
 								arf1_var = (arf180ns + a_rf1ns)/2;
 							else
 								arf1_var = (arf180 + a_rf1)/2;
+
+							fprintf(stderr,"\nStabilzer: adjusting flip ang: %f \n", arf1_var ); 
 						}
 						if(varflip) {
 							/* variable flip angle refocuser pulses to get more signal 
@@ -4039,49 +4035,42 @@ STATUS scan( void )
 							//tmpmax = ((float)(opetl) - (float)(opetl)/4.0) *  ((float)(opetl) - (float)(opetl)/4.0) ;    /* max value of the parabola */
 
 							/* New: flip angle schedule is fourth order polynomial based on data by Zhao 1997 , DOI: 10.1002/mrm.27118
-							   flip angles in degrees: */
+							**** NOTE: This calculation is degrees: */
 							arf1_var = 0.0044*pow(echon+1,4)   - 0.2521*pow(echon+1,3) +   5.3544 *pow(echon+1,2) - 45.0296*(echon+1) + 158.0661;
 
 							/* cap the RF amplitude at 150 degree pulse */
 							if (arf1_var > 150) arf1_var = 150;
 
+							/* scale from degrees to relative scale of rho channel [0,1]*/
 							if(doNonSelRefocus)
 							{
-								// scale to relative scale of rho channel [0,1]
 								arf1_var *= arf180ns / 180.0;
-
-								//arf1_var *= (arf180ns - a_rf1ns) / tmpmax; /* scale to the range from min to 180 */
-								//arf1_var += a_rf1ns;  /* shift up */
-
 							}
 							else
 							{
-								// scale to relative scale of rho channel [0,1]
 								arf1_var *= arf180 / 180.0;
-
-								//arf1_var *= (arf180 - a_rf1) / tmpmax; /* scale */
-								//arf1_var += a_rf1;  /* shift up */
-
 							}
 
+							fprintf(stderr,"\nVFA: adjusting flip ang: %f \n", arf1_var ); 
 						}
+
 						/* set the transmitter gain after the adjustments */
 						if(doNonSelRefocus)
 						{
 							setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
-							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+							fprintf(stderr,"\nsetting NSrefocuser flip ang: %f (arf180=%f)\n", arf1_var, arf180 ); 
 						}
 						else
 						{
 							setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
-							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+							fprintf(stderr,"\nsetting sel. flip ang: %f (arf180=%f)\n", arf1_var, arf180 ); 
 						}
 					}
 			
 					if (ro_type <= 2) 
 					{       /* FSE - CPMG */
 						if (doNonSelRefocus)
-							ttotal += play_rf1(FS_PI/2 );
+							ttotal += play_rf1ns(FS_PI/2 );
 						else
 							ttotal += play_rf1(FS_PI/2 );
 					}

@@ -3939,13 +3939,13 @@ STATUS scan( void )
 
 				/* Cardiac gating option - prior to presaturation pulse */
 				if (do_cardiac_gating) {
-                	settrigger(TRIG_ECG, 0);
-                	fprintf(stderr, "scan(): Setting ECG Trigger\n");
+					settrigger(TRIG_ECG, 0);
+					fprintf(stderr, "scan(): Setting ECG Trigger\n");
 				}
 				/* Resp gating option - prior to presaturation pulse */
 				if (do_resp_gating) {
-                	settrigger(TRIG_RESP, 0);
-                	fprintf(stderr, "scan(): Setting Resp Trigger\n");
+					settrigger(TRIG_RESP, 0);
+					fprintf(stderr, "scan(): Setting Resp Trigger\n");
 				}
 
 				/* play the ASL pre-saturation pulse to reset magnetization */
@@ -4077,7 +4077,14 @@ STATUS scan( void )
 							fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
 						}
 					}
-
+			
+					if (ro_type <= 2) 
+					{       /* FSE - CPMG */
+						if (doNonSelRefocus)
+							ttotal += play_rf1(FS_PI/2 );
+						else
+							ttotal += play_rf1(FS_PI/2 );
+					}
 					else  /* SPGR and SSFP cases */
 					{
 						ttotal += play_rf1(rfspoil_flag * rfphase_tab[echon + ndisdaqechoes]);

@@ -3559,8 +3559,9 @@ STATUS prescanCore() {
 					/* New: flip angle schedule is fourth order polynomial based on data by Zhao 1997 , DOI: 10.1002/mrm.27118
 					flip angles in degrees: */
    					arf1_var = 0.0044*pow(echon+1,4)   - 0.2521*pow(echon+1,3) +   5.3544 *pow(echon+1,2) - 45.0296*(echon+1) + 158.0661;
+
 					/* cap the RF amplitude at 150 degree pulse */
-					if (arf1_var > 150) arf1_var = 150;;
+					if (arf1_var > 150) arf1_var = 150;
 
 					if(doNonSelRefocus)
 					{
@@ -3575,26 +3576,26 @@ STATUS prescanCore() {
 					{
 						// scale to relative scale of rho channel [0,1]
 						arf1_var *= arf180 / 180.0;
-					
+
 						//arf1_var *= (arf180 - a_rf1) / tmpmax; /* scale */
 						//arf1_var += a_rf1;  /* shift up */
 
 					}
-					
-					/* set the transmitter gain after the adjustments */
-					if(doNonSelRefocus)
-					{
-						setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
-						fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
-					}
-					else
-					{
-						setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
-						fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
-					}
+
+				}
+				/* set the transmitter gain after the adjustments */
+				if(doNonSelRefocus)
+				{
+					setiamp(arf1_var * MAX_PG_WAMP, &rf1ns,0);
+					fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
+				}
+				else
+				{
+					setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
+					fprintf(stderr,"\nadjusting var flip ang: %f (arf180=%f)", arf1_var, arf180 ); 
 				}
 			}
-		
+			
 			fprintf(stderr, "prescanCore(): Playing flip pulse for prescan iteration %d...\n", view);
 			
 			if (ro_type <= 2) {/* FSE - CPMG */

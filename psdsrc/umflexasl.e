@@ -115,6 +115,9 @@ float Rp[9];
 long rotmat0[9];
 long prep_rotmat[9];
 
+/* rotation matrix for zoomed FOV (perpendicular to 90 degree pulse )*/
+long zoomfov_rotmat[9];
+
 /* Declare ASL prep pulse variables */
 int prep1_len = 5000;
 int prep1_rho_lbl[MAXWAVELEN];
@@ -188,6 +191,8 @@ float arf180, arf180ns;
 int ro_type = 3 with {1, 4, 2, VIS, "(1) FSE, (2) FSE with spiral out, (3) SPGR, (4) bSSFP ",};
 float SE_factor = 1.5 with {0.01, 10.0 , 1.5, VIS, "Adjustment for the slice width of the refocuser",};
 int	doNonSelRefocus = 1 with {0, 1, 0, VIS, "Use a RECT non-selective refocuser pulse",};
+int	zoomfov = 0 with {0, 1, 0, VIS, "FSE case only: make the 90 and the refocusers, perpendicular.  The 90 slice thickness is 1/2 of the refocuser's",};
+float 	zoom_factor=1.0;
 int force_spiral_out = 0;
 int spiral_out_mode = 0 with {0,2,0, VIS, "spiral in-out (0) or spiral out (1)",};
 
@@ -2047,6 +2052,11 @@ STATUS predownload( void )
 				EE_ARGS(1), STRING_ARG, "orderslice" );
 	}
 
+	if (doNonSelRefocus && doNonSelRefocus){
+		epic_error(use_ermes,"Can't do Zoomed FOV with nonSelective pulses!", EM_PSD_SUPPORT_FAILURE, EE_ARGS(0));
+		return FAILURE;
+	}
+
 	/* nex, exnex, acqs and acq_type are used in the rhheaderinit routine */
 	/* -- to initialize recon header variables */
 	if( floatsAlmostEqualEpsilons(opnex, 1.0, 2) )
@@ -2130,6 +2140,7 @@ STATUS pulsegen( void )
 {
 	sspinit(psd_board_type);
 	int tmploc;	
+
 	/*********************************/
 	/* Generate PCASL core */
 	/*********************************/	
@@ -2509,7 +2520,11 @@ STATUS pulsegen( void )
 
 	fprintf(stderr, "pulsegen(): generating rf0 (rf0 pulse)...\n");
 	tmploc += pgNObuffertime; /* start time for rf0 */
-	SLICESELZ(rf0, tmploc + pw_gzrf0a, 3200, (opslthick + opslspace) * opslquant * SE_factor , 90.0, 2, 1, loggrd);
+	if(zoomfov){
+		fprintf(stderr, "(Doing ZOOMED FOV FSE...)\n");
+		zoom_factor = 0.5;
+	}
+	SLICESELZ(rf0, tmploc + pw_gzrf0a, 3200, (opslthick + opslspace) * opslquant * SE_factor * zoom_factor, 90.0, 2, 1, loggrd);
 	fprintf(stderr, "\tstart: %dus, ", tmploc);
 	tmploc += pw_gzrf0a + pw_gzrf0 + pw_gzrf0d; /* end time for rf2 pulse */
 	fprintf(stderr, " end: %dus\n", tmploc);
@@ -3970,8 +3985,18 @@ STATUS scan( void )
 				}
 
 				if (ro_type <= 2) { /* FSE - play 90 */
+					if (zoomfov){
+						/* used the zoomed FOV: excitation pulse along x axis, refocusers along z-axis*/
+						setrotate( zoomfov_rotmat, 0 );
+					}
+
 					fprintf(stderr, "scan(): playing 90deg FSE tipdown for frame %d, shot %d (t = %d / %.0f us)...\n", framen, shotn, ttotal, pitscan);
 					play_rf0(0);
+
+					if (zoomfov){
+						/* Reset the rotation matrix */
+						setrotate( tmtx0, 0 );
+					}
 				}	
 
 				/* play disdaq echoes */
@@ -4406,6 +4431,7 @@ int genviews() {
 	float theta = 0.0;
 	float Rz[9], Rtheta[9], Rphi[9], Tz[9];
 	float T_0[9], T[9];
+	float Rzoom[9],  Tzoom[9]; /* these are for zoomed field of view */
 
 	FILE* pRotFile;
 	char fname[80];
@@ -4520,6 +4546,15 @@ int genviews() {
 						
 					}
 
+					/* in case of zoomed FOV, calculate a rotation for the 90 deg. excitation pulse */
+					if(zoomfov){
+						genrotmat('y', M_PI/2.0, Rzoom);
+						multmat(3,3,3,Rzoom,T,Tzoom);
+						for (n = 0; n < 9; n++) {
+							/* store the rotation matrix in the right scale and format for the scanner*/
+							zoomfov_rotmat[n] = (long)round(MAX_PG_WAMP*Tzoom[n]);
+						}
+					}
 
 					/* Calculate the transformation matrices */
 					Tz[8] = dz;

@@ -1412,19 +1412,44 @@ STATUS predownload( void )
 	/* Set the parameters for the crusher gradients */
 	tmp_area = crushfac * 2*M_PI/GAMMA * opxres/(opfov/10.0) * 1e6; /* Area under crusher s.t. dk = crushfac*kmax (G/cm*us) */
 	amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd); 	
+
+
+	pw_rfps1 = tmp_pw;
+	pw_rfps1a = tmp_pwa;
+	pw_rfps1d = tmp_pwd;
+	a_rfps1 = tmp_a;
+
+	pw_rfps2 = tmp_pw;
+	pw_rfps2a = tmp_pwa;
+	pw_rfps2d = tmp_pwd;
+	a_rfps2 = tmp_a;
 	
+	pw_rfps3 = tmp_pw;
+	pw_rfps3a = tmp_pwa;
+	pw_rfps3d = tmp_pwd;
+	a_rfps3 = tmp_a;
+	
+	pw_rfps4 = tmp_pw;
+	pw_rfps4a = tmp_pwa;
+	pw_rfps4d = tmp_pwd;
+	a_rfps4 = tmp_a;
+
+
 	pw_rfps1c = tmp_pw;
 	pw_rfps1ca = tmp_pwa;
 	pw_rfps1cd = tmp_pwd;
 	a_rfps1c = tmp_a;
+
 	pw_rfps2c = tmp_pw;
 	pw_rfps2ca = tmp_pwa;
 	pw_rfps2cd = tmp_pwd;
 	a_rfps2c = tmp_a;
+	
 	pw_rfps3c = tmp_pw;
 	pw_rfps3ca = tmp_pwa;
 	pw_rfps3cd = tmp_pwd;
 	a_rfps3c = tmp_a;
+	
 	pw_rfps4c = tmp_pw;
 	pw_rfps4ca = tmp_pwa;
 	pw_rfps4cd = tmp_pwd;
@@ -1481,7 +1506,7 @@ STATUS predownload( void )
 	a_rf1trap2ns = tmp_a;
 	
 	
-	/* Calculating refocuser gradients */
+	/* Calculating refocuser slab selection gradients */
 	if (ro_type > 2) { 
 		/* GRE mode: rf1 does the excitation, instead of rf0.   rf0 does not get played at all */	
 		/* GRE modes - trap2 becomes the slice select refocuser in this case */
@@ -3277,6 +3302,8 @@ int write_scan_info() {
 	fprintf(finfo, "\t%-50s%20f %s\n", "X/Y FOV:", (float)opfov/10.0, "cm");
 	fprintf(finfo, "\t%-50s%20d \n", "Matrix size:", opxres);
 	fprintf(finfo, "\t%-50s%20f %s\n", "Nominal 3D slab thickness:", (float)(opslthick + opslspace)*SE_factor * opslquant/10.0, "cm"); 	
+	if (zoomfov == 1)
+		fprintf(finfo, "\t%-50s%20f \n", "Zoomed FOV Fraction:", zoom_factor); 	
 
 	fprintf(finfo, "Hardware limits:\n");
 	fprintf(finfo, "\t%-50s%20f %s\n", "Max gradient amplitude:", GMAX, "G/cm");

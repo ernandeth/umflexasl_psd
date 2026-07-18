@@ -2054,7 +2054,7 @@ STATUS predownload( void )
 
 	if (doNonSelRefocus && zoomfov){
 		epic_error(use_ermes,"Can't do Zoomed FOV with nonSelective pulses!", EM_PSD_SUPPORT_FAILURE, EE_ARGS(0));
-		return FAILURE;
+		doNonSelRefocus = 0;
 	}
 
 	/* nex, exnex, acqs and acq_type are used in the rhheaderinit routine */
@@ -3505,7 +3505,18 @@ STATUS prescanCore() {
 
 		if (ro_type <= 2) { /* FSE - play 90 deg. pulse with 0 phase */
 			fprintf(stderr, "prescanCore(): playing 90deg FSE tipdown for prescan iteration %d...\n", view);
+			if (zoomfov)
+			{
+				/* used the zoomed FOV: excitation pulse along x axis, refocusers along z-axis*/
+				setrotate(zoomfov_rotmat, 0);
+			}
 			ttotal += play_rf0(0);
+			if (zoomfov)
+			{
+				/* Reset the rotation matrix */
+				setrotate(tmtx0, 0);
+			}
+			
 		}	
 
 		/* Load the DAB */	
@@ -3747,12 +3758,25 @@ STATUS scan( void )
 			ttotal += play_deadtime(optr - opetl * (dur_rf1nscore + TIMESSI + dur_seqcore + TIMESSI));
 		else
 			ttotal += play_deadtime(optr - opetl * (dur_rf1core + TIMESSI + dur_seqcore + TIMESSI));
-		
-		if (ro_type <= 2 ) { /* FSE - play 90 deg. with 0 phase*/
+
+		if (ro_type <= 2)
+		{ /* FSE - play 90 deg. with 0 phase*/
 			fprintf(stderr, "scan(): playing 90deg FSE tipdown for disdaq train %d (t = %d / %.0f us)...\n", disdaqn, ttotal, pitscan);
-			play_rf0(0);
-		}	
-		
+			if (zoomfov)
+			{
+				/* used the zoomed FOV: excitation pulse along x axis, refocusers along z-axis*/
+				setrotate(zoomfov_rotmat, 0);
+			}
+
+			ttotal += play_rf0(0);
+
+			if (zoomfov)
+			{
+				/* Reset the rotation matrix */
+				setrotate(tmtx0, 0);
+			}
+		}
+
 		/* Loop through echoes */
 		for (echon = 0; echon < opetl+ndisdaqechoes; echon++) {
 			fprintf(stderr, "scan(): playing flip pulse for disdaq train %d (t = %d / %.0f us)...\n", disdaqn, ttotal, pitscan);
@@ -3991,7 +4015,7 @@ STATUS scan( void )
 					}
 
 					fprintf(stderr, "scan(): playing 90deg FSE tipdown for frame %d, shot %d (t = %d / %.0f us)...\n", framen, shotn, ttotal, pitscan);
-					play_rf0(0);
+					ttotal += play_rf0(0);
 
 					if (zoomfov){
 						/* Reset the rotation matrix */
@@ -4480,6 +4504,21 @@ int genviews() {
 	for (n = 0; n < 9; n++) T_0[n] = (float)rsprot[0][n] / MAX_PG_WAMP;
 	orthonormalize(T_0, 3, 3);
 
+	/* in case of zoomed FOV, calculate a rotation for the 90 deg. excitation pulse */
+	if (zoomfov)
+	{
+		genrotmat('y', M_PI / 2.0, Rzoom);
+		multmat(3, 3, 3, Rzoom, T_0, Tzoom); /* Tzoom = Rzoom * T_0*/
+		fprintf(stderr,"\ngenviews(): zoomed FOV rotation matrix:\n");
+		for (n = 0; n < 9; n++)
+		{
+			/* store the rotation matrix in the right scale and format for the scanner*/
+			zoomfov_rotmat[n] = (long)round(MAX_PG_WAMP * Tzoom[n]);
+			fprintf(stderr, "%f \t", Tzoom[n]);
+		}
+		fprintf(stderr,"\n--------------:\n");
+	}
+
 	rotation_count=0;
 	/* Loop through all views */
 	for(nfr=0; nfr < mrf_nframes; nfr++){
@@ -4544,16 +4583,6 @@ int genviews() {
 							dz = 0.0;
 							break;
 						
-					}
-
-					/* in case of zoomed FOV, calculate a rotation for the 90 deg. excitation pulse */
-					if(zoomfov){
-						genrotmat('y', M_PI/2.0, Rzoom);
-						multmat(3,3,3,Rzoom,T,Tzoom);
-						for (n = 0; n < 9; n++) {
-							/* store the rotation matrix in the right scale and format for the scanner*/
-							zoomfov_rotmat[n] = (long)round(MAX_PG_WAMP*Tzoom[n]);
-						}
 					}
 
 					/* Calculate the transformation matrices */

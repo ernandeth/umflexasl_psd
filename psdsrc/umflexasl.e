@@ -1475,24 +1475,29 @@ STATUS predownload( void )
 	pw_rf1trap2nsd = tmp_pwd;
 	a_rf1trap2ns = tmp_a;
 	
-	/* calculate slice select refocuser gradient */
-	tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d)/2.0);
-	amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd); 	
-	tmp_a *= -0.5;
-	tmp_a *= zoom_factor;	
-
-	pw_gzrf0r = tmp_pw;
-	pw_gzrf0ra = tmp_pwa;
-	pw_gzrf0rd = tmp_pwd;
-	a_gzrf0r = tmp_a;
+	
 
 	if (ro_type > 2) { 
 		/* GRE mode: rf1 does the excitation, instead of rf0.   rf0 does not get played at all */	
 		/* GRE modes - make trap2 a slice select refocuser */
+		tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d) / 2.0);
+		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
+
 		pw_gzrf1trap2 = tmp_pw;
 		pw_gzrf1trap2a = tmp_pwa;
 		pw_gzrf1trap2d = tmp_pwd;
-		a_gzrf1trap2 = tmp_a;
+		a_gzrf1trap2 = -0.5 * tmp_a;
+	}
+	else {
+		/* FSE mode:  the excitation is done by rf0 and the refocusing by rf1 */
+		/* calculate slice select refocuser gradient */
+		tmp_area = a_gzrf0 * (pw_gzrf0 + (pw_gzrf0 + pw_gzrf0d) / 2.0);
+		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
+
+		pw_gzrf0r = tmp_pw;
+		pw_gzrf0ra = tmp_pwa;
+		pw_gzrf0rd = tmp_pwd;
+		a_gzrf0r = -0.5*tmp_a;
 	}
 
 	/* set parameters for flow compensated kz-encode (pre-scaled to kzmax) */
@@ -2530,11 +2535,11 @@ STATUS pulsegen( void )
 	tmploc += pw_gzrf0a + pw_gzrf0 + pw_gzrf0d; /* end time for rf2 pulse */
 	fprintf(stderr, " end: %dus\n", tmploc);
 		
-	fprintf(stderr, "pulsegen(): generating gzrf1trap2 (post-rf1 gradient trapezoid)...\n");
+	fprintf(stderr, "pulsegen(): generating gzrf0r (slab-select refocuser gradient)...\n");
 	tmploc += pgNObuffertime; /* start time for gzrf0r */
 	TRAPEZOID(ZGRAD, gzrf0r, tmploc + pw_gzrf0ra, 3200, 0, loggrd);
 	fprintf(stderr, "\tstart: %dus, ", tmploc);
-	tmploc += pw_gzrf0ra + pw_gzrf0r + pw_gzrf0rd; /* end time for gzrf1trap2 pulse */
+	tmploc += pw_gzrf0ra + pw_gzrf0r + pw_gzrf0rd; /* end time for gzrf0 pulse */
 	fprintf(stderr, " end: %dus\n", tmploc);
 	tmploc += pgNObuffertime; /* buffer */
 

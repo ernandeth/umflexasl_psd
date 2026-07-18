@@ -191,7 +191,7 @@ float arf180, arf180ns;
 int ro_type = 3 with {1, 4, 2, VIS, "(1) FSE, (2) FSE with spiral out, (3) SPGR, (4) bSSFP ",};
 float SE_factor = 1.5 with {0.01, 10.0 , 1.5, VIS, "Adjustment for the slice width of the refocuser",};
 int	doNonSelRefocus = 1 with {0, 1, 0, VIS, "Use a RECT non-selective refocuser pulse",};
-int	zoomfov = 0 with {0, 1, 0, VIS, "FSE case only: make the 90 and the refocusers, perpendicular.  The 90 slice thickness is 1/2 of the refocuser's",};
+int	zoomfov = 0 with {0, 1, 0, VIS, "FSE: make the 90 and the refocusers perpendicular.  The 90 slice thickness is 1/2 of the refocuser's",};
 float 	zoom_factor = 1.0;
 int force_spiral_out = 0;
 int spiral_out_mode = 0 with {0,2,0, VIS, "spiral in-out (0) or spiral out (1)",};
@@ -1044,6 +1044,11 @@ STATUS predownload( void )
 	if (ro_type <= 2){
 		SE_factor=1.5;
 		doNonSelRefocus = 1;
+
+		if (zoomfov) 
+			zoom_factor= 0.5;
+		else
+			zoom_factor = 1.0;
 	}
 	fprintf(stderr, "\npredownload(): SE_factor (SE refocuse sl. thick factor)  %f\n", SE_factor);
 
@@ -1476,10 +1481,10 @@ STATUS predownload( void )
 	a_rf1trap2ns = tmp_a;
 	
 	
-
+	/* Calculating refocuser gradients */
 	if (ro_type > 2) { 
 		/* GRE mode: rf1 does the excitation, instead of rf0.   rf0 does not get played at all */	
-		/* GRE modes - make trap2 a slice select refocuser */
+		/* GRE modes - trap2 becomes the slice select refocuser in this case */
 		tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d) / 2.0);
 		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
 
@@ -1497,7 +1502,7 @@ STATUS predownload( void )
 		pw_gzrf0r = tmp_pw;
 		pw_gzrf0ra = tmp_pwa;
 		pw_gzrf0rd = tmp_pwd;
-		a_gzrf0r = -0.5*tmp_a;
+		a_gzrf0r = -0.5 * tmp_a;
 	}
 
 	/* set parameters for flow compensated kz-encode (pre-scaled to kzmax) */
@@ -2526,10 +2531,6 @@ STATUS pulsegen( void )
 
 	fprintf(stderr, "pulsegen(): generating rf0 (rf0 pulse)...\n");
 	tmploc += pgNObuffertime; /* start time for rf0 */
-	if(zoomfov){
-		fprintf(stderr, "(Doing ZOOMED FOV FSE...)\n");
-		zoom_factor = 0.5;
-	}
 	SLICESELZ(rf0, tmploc + pw_gzrf0a, 3200, (opslthick + opslspace) * opslquant * SE_factor * zoom_factor, 90.0, 2, 1, loggrd);
 	fprintf(stderr, "\tstart: %dus, ", tmploc);
 	tmploc += pw_gzrf0a + pw_gzrf0 + pw_gzrf0d; /* end time for rf2 pulse */

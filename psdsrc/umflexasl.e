@@ -1479,7 +1479,8 @@ STATUS predownload( void )
 	tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d)/2.0);
 	amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd); 	
 	tmp_a *= -0.5;
-	
+	tmp_a *= zoom_factor;	
+
 	pw_gzrf0r = tmp_pw;
 	pw_gzrf0ra = tmp_pwa;
 	pw_gzrf0rd = tmp_pwd;

@@ -192,7 +192,7 @@ int ro_type = 3 with {1, 4, 2, VIS, "(1) FSE, (2) FSE with spiral out, (3) SPGR,
 float SE_factor = 1.5 with {0.01, 10.0 , 1.5, VIS, "Adjustment for the slice width of the refocuser",};
 int	doNonSelRefocus = 1 with {0, 1, 0, VIS, "Use a RECT non-selective refocuser pulse",};
 int	zoomfov = 0 with {0, 1, 0, VIS, "FSE case only: make the 90 and the refocusers, perpendicular.  The 90 slice thickness is 1/2 of the refocuser's",};
-float 	zoom_factor=1.0;
+float 	zoom_factor = 1.0;
 int force_spiral_out = 0;
 int spiral_out_mode = 0 with {0,2,0, VIS, "spiral in-out (0) or spiral out (1)",};
 
@@ -2052,7 +2052,7 @@ STATUS predownload( void )
 				EE_ARGS(1), STRING_ARG, "orderslice" );
 	}
 
-	if (doNonSelRefocus && doNonSelRefocus){
+	if (doNonSelRefocus && zoomfov){
 		epic_error(use_ermes,"Can't do Zoomed FOV with nonSelective pulses!", EM_PSD_SUPPORT_FAILURE, EE_ARGS(0));
 		return FAILURE;
 	}

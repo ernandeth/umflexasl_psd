@@ -191,8 +191,8 @@ float arf180, arf180ns;
 int ro_type = 3 with {1, 4, 2, VIS, "(1) FSE, (2) FSE with spiral out, (3) SPGR, (4) bSSFP ",};
 float SE_factor = 1.5 with {0.01, 10.0 , 1.5, VIS, "Adjustment for the slice width of the refocuser",};
 int	doNonSelRefocus = 1 with {0, 1, 0, VIS, "Use a RECT non-selective refocuser pulse",};
-int	zoomfov = 0 with {0, 1, 0, VIS, "FSE: make the 90 and the refocusers perpendicular.  The 90 slice thickness is 1/2 of the refocuser's",};
-float 	zoom_factor = 1.0;
+int	doZoomFOV = 0 with {0, 1, 0, VIS, "FSE case only: make the 90 and the refocusers, perpendicular.  The 90 slice thickness is 1/2 of the refocuser's",};
+float 	zoom_fraction = 1.0;
 int force_spiral_out = 0;
 int spiral_out_mode = 0 with {0,2,0, VIS, "spiral in-out (0) or spiral out (1)",};
 
@@ -1041,14 +1041,17 @@ STATUS predownload( void )
 #include "predownload.in"	/* include 'canned' predownload code */
 	/*********************************************************************/
 
-	if (ro_type <= 2){
-		SE_factor=1.5;
+	if (ro_type <= 2)
+	{
+		SE_factor = 1.5;
 		doNonSelRefocus = 1;
 
-		if (zoomfov) 
-			zoom_factor= 0.5;
-		else
-			zoom_factor = 1.0;
+		if (doZoomFOV)
+		{
+			fprintf(stderr, "(Doing ZOOMED FOV FSE...)\n");
+			zoom_fraction = 0.5;
+			doNonSelRefocus = 0;
+		}
 	}
 	fprintf(stderr, "\npredownload(): SE_factor (SE refocuse sl. thick factor)  %f\n", SE_factor);
 
@@ -1505,14 +1508,23 @@ STATUS predownload( void )
 	pw_rf1trap2nsd = tmp_pwd;
 	a_rf1trap2ns = tmp_a;
 	
+	/* calculate slice select refocuser gradients and assign parameters to gradients */
+	tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d)/2.0);
+	amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd); 	
+	tmp_a *= -0.5;
 	
-	/* Calculating refocuser slab selection gradients */
-	if (ro_type > 2) { 
-		/* GRE mode: rf1 does the excitation, instead of rf0.   rf0 does not get played at all */	
-		/* GRE modes - trap2 becomes the slice select refocuser in this case */
-		tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d) / 2.0);
-		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
+	/* Note about FSE case:  rf0 does the 90 deg. excitation.  
+	rf1 does the refocusers.  They should use the same slab select gradient size... 
+	unless we are doing zoomed FOV*/
+	pw_gzrf0r = tmp_pw;
+	pw_gzrf0ra = tmp_pwa;
+	pw_gzrf0rd = tmp_pwd;
+	a_gzrf0r = tmp_a / zoom_fraction;
 
+	/* Note about GRE case: rf1 does the excitation, instead of rf0.   
+	rf0 does not get played at all, so we jsut leave it alone
+	Also - we use trap2 as the slice-select refocusing gradient */
+	if (ro_type > 2) { 
 		pw_gzrf1trap2 = tmp_pw;
 		pw_gzrf1trap2a = tmp_pwa;
 		pw_gzrf1trap2d = tmp_pwd;
@@ -2088,11 +2100,6 @@ STATUS predownload( void )
 				EE_ARGS(1), STRING_ARG, "orderslice" );
 	}
 
-	if (doNonSelRefocus && zoomfov){
-		epic_error(use_ermes,"Can't do Zoomed FOV with nonSelective pulses!", EM_PSD_SUPPORT_FAILURE, EE_ARGS(0));
-		doNonSelRefocus = 0;
-	}
-
 	/* nex, exnex, acqs and acq_type are used in the rhheaderinit routine */
 	/* -- to initialize recon header variables */
 	if( floatsAlmostEqualEpsilons(opnex, 1.0, 2) )
@@ -2556,7 +2563,8 @@ STATUS pulsegen( void )
 
 	fprintf(stderr, "pulsegen(): generating rf0 (rf0 pulse)...\n");
 	tmploc += pgNObuffertime; /* start time for rf0 */
-	SLICESELZ(rf0, tmploc + pw_gzrf0a, 3200, (opslthick + opslspace) * opslquant * SE_factor * zoom_factor, 90.0, 2, 1, loggrd);
+	
+	SLICESELZ(rf0, tmploc + pw_gzrf0a, 3200, (opslthick + opslspace) * opslquant * SE_factor * zoom_fraction, 90.0, 2, 1, loggrd);
 	fprintf(stderr, "\tstart: %dus, ", tmploc);
 	tmploc += pw_gzrf0a + pw_gzrf0 + pw_gzrf0d; /* end time for rf2 pulse */
 	fprintf(stderr, " end: %dus\n", tmploc);
@@ -3301,9 +3309,9 @@ int write_scan_info() {
 	fprintf(finfo, "Rx parameters:\n");
 	fprintf(finfo, "\t%-50s%20f %s\n", "X/Y FOV:", (float)opfov/10.0, "cm");
 	fprintf(finfo, "\t%-50s%20d \n", "Matrix size:", opxres);
-	fprintf(finfo, "\t%-50s%20f %s\n", "Nominal 3D slab thickness:", (float)(opslthick + opslspace)*SE_factor * opslquant/10.0, "cm"); 	
-	if (zoomfov == 1)
-		fprintf(finfo, "\t%-50s%20f \n", "Zoomed FOV Fraction:", zoom_factor); 	
+	fprintf(finfo, "\t%-50s%20f %s\n", "Nominal 3D slab thickness:", (float)(opslthick + opslspace)*SE_factor * opslquant/10.0, "cm");
+	if (doZoomFOV == 1)
+		fprintf(finfo, "\t%-50s%20f \n", "Zoomed FOV Fraction:", zoom_fraction);
 
 	fprintf(finfo, "Hardware limits:\n");
 	fprintf(finfo, "\t%-50s%20f %s\n", "Max gradient amplitude:", GMAX, "G/cm");
@@ -3539,13 +3547,13 @@ STATUS prescanCore() {
 
 		if (ro_type <= 2) { /* FSE - play 90 deg. pulse with 0 phase */
 			fprintf(stderr, "prescanCore(): playing 90deg FSE tipdown for prescan iteration %d...\n", view);
-			if (zoomfov)
+			if (doZoomFOV)
 			{
 				/* used the zoomed FOV: excitation pulse along x axis, refocusers along z-axis*/
 				setrotate(zoomfov_rotmat, 0);
 			}
 			ttotal += play_rf0(0);
-			if (zoomfov)
+			if (doZoomFOV)
 			{
 				/* Reset the rotation matrix */
 				setrotate(tmtx0, 0);
@@ -3796,7 +3804,7 @@ STATUS scan( void )
 		if (ro_type <= 2)
 		{ /* FSE - play 90 deg. with 0 phase*/
 			fprintf(stderr, "scan(): playing 90deg FSE tipdown for disdaq train %d (t = %d / %.0f us)...\n", disdaqn, ttotal, pitscan);
-			if (zoomfov)
+			if (doZoomFOV)
 			{
 				/* used the zoomed FOV: excitation pulse along x axis, refocusers along z-axis*/
 				setrotate(zoomfov_rotmat, 0);
@@ -3804,7 +3812,7 @@ STATUS scan( void )
 
 			ttotal += play_rf0(0);
 
-			if (zoomfov)
+			if (doZoomFOV)
 			{
 				/* Reset the rotation matrix */
 				setrotate(tmtx0, 0);
@@ -4043,7 +4051,7 @@ STATUS scan( void )
 				}
 
 				if (ro_type <= 2) { /* FSE - play 90 */
-					if (zoomfov){
+					if (doZoomFOV){
 						/* used the zoomed FOV: excitation pulse along x axis, refocusers along z-axis*/
 						setrotate( zoomfov_rotmat, 0 );
 					}
@@ -4051,7 +4059,7 @@ STATUS scan( void )
 					fprintf(stderr, "scan(): playing 90deg FSE tipdown for frame %d, shot %d (t = %d / %.0f us)...\n", framen, shotn, ttotal, pitscan);
 					ttotal += play_rf0(0);
 
-					if (zoomfov){
+					if (doZoomFOV){
 						/* Reset the rotation matrix */
 						setrotate( tmtx0, 0 );
 					}
@@ -4539,7 +4547,7 @@ int genviews() {
 	orthonormalize(T_0, 3, 3);
 
 	/* in case of zoomed FOV, calculate a rotation for the 90 deg. excitation pulse */
-	if (zoomfov)
+	if (doZoomFOV)
 	{
 		genrotmat('y', M_PI / 2.0, Rzoom);
 		multmat(3, 3, 3, Rzoom, T_0, Tzoom); /* Tzoom = Rzoom * T_0*/

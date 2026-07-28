@@ -337,7 +337,7 @@ float echo1bw = 16 with {,,,INVIS,"Echo1 filter bw.in KHz",};
 
 /*MRF mode features*/
 int mrf_mode = 2 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
-int NKrepeats = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the view rotation pattern",};
+int NKrepeats = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the k-space rotation pattern in the time series",};
 int mrf_sched_id = 1;
 float prev_theta = 0.0;  /* rotation angles from last frame */
 float prev_phi = 0.0;    /* rotation angles from last frame */
@@ -3352,6 +3352,7 @@ int write_scan_info() {
 
 	if (mrf_mode > 0){
 		fprintf(finfo, "\nMRF MODE : %d . \n\tK-space trajectory is rotated from frame to frame (see kviews.txt) \n", mrf_mode);
+		fprintf(finfo, "\t%-50s%20d\n", "Number of k-space sampling pattern repetitions: ", NKrepeats);
 		if (mrf_mode==1)
 			fprintf(finfo, "\t%-50s%20s%05d \n", "MRF Labeling timing file in:", "mrfasl_schedules/ \n", mrf_sched_id );
 		fprintf(finfo, "\n------\n");

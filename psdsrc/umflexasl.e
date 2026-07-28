@@ -336,7 +336,8 @@ int debug = 0 with {0,1,0,INVIS,"1 if debug is on ",};
 float echo1bw = 16 with {,,,INVIS,"Echo1 filter bw.in KHz",};
 
 /*MRF mode features*/
-int mrf_mode = 0 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
+int mrf_mode = 2 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
+int NKrepeats = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the view rotation pattern",};
 int mrf_sched_id = 1;
 float prev_theta = 0.0;  /* rotation angles from last frame */
 float prev_phi = 0.0;    /* rotation angles from last frame */
@@ -1417,27 +1418,6 @@ STATUS predownload( void )
 	amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd); 	
 
 
-	pw_rfps1 = tmp_pw;
-	pw_rfps1a = tmp_pwa;
-	pw_rfps1d = tmp_pwd;
-	a_rfps1 = tmp_a;
-
-	pw_rfps2 = tmp_pw;
-	pw_rfps2a = tmp_pwa;
-	pw_rfps2d = tmp_pwd;
-	a_rfps2 = tmp_a;
-	
-	pw_rfps3 = tmp_pw;
-	pw_rfps3a = tmp_pwa;
-	pw_rfps3d = tmp_pwd;
-	a_rfps3 = tmp_a;
-	
-	pw_rfps4 = tmp_pw;
-	pw_rfps4a = tmp_pwa;
-	pw_rfps4d = tmp_pwd;
-	a_rfps4 = tmp_a;
-
-
 	pw_rfps1c = tmp_pw;
 	pw_rfps1ca = tmp_pwa;
 	pw_rfps1cd = tmp_pwd;
@@ -1529,17 +1509,6 @@ STATUS predownload( void )
 		pw_gzrf1trap2a = tmp_pwa;
 		pw_gzrf1trap2d = tmp_pwd;
 		a_gzrf1trap2 = -0.5 * tmp_a;
-	}
-	else {
-		/* FSE mode:  the excitation is done by rf0 and the refocusing by rf1 */
-		/* calculate slice select refocuser gradient */
-		tmp_area = a_gzrf0 * (pw_gzrf0 + (pw_gzrf0 + pw_gzrf0d) / 2.0);
-		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
-
-		pw_gzrf0r = tmp_pw;
-		pw_gzrf0ra = tmp_pwa;
-		pw_gzrf0rd = tmp_pwd;
-		a_gzrf0r = -0.5 * tmp_a;
 	}
 
 	/* set parameters for flow compensated kz-encode (pre-scaled to kzmax) */
@@ -4681,11 +4650,17 @@ int genviews() {
 
 		/*BUT ... in MRF mode  2 , we change the rotations each PAIR of frames
 		- remember that each PAIR of control-label frames needs to have the same rotations */
-		if ((mrf_mode==2) && !(nfr% 2))
-		{
-			/* repeat previous frame's rotations by rewinding the rotation counter */
-			rotation_count -= (opetl*narms);
-			//fprintf(stderr,"rotation num. %d\n", rotation_count);
+		if (mrf_mode==2) {
+			if ( (nfr%2) == 0){
+				/* repeat previous frame's rotations by rewinding the rotation counter */
+				rotation_count -= (opetl*narms);
+				//fprintf(stderr,"rotation num. %d\n", rotation_count);
+			}
+			/* introduce repetition in the mrf rotations.
+			We repeat the trajectory pattern NKrepeats times in the time series*/
+			if ((nfr % (int)(mrf_nframes/NKrepeats) ) == 0){
+				rotation_count = 0;
+			}
 		}
 	}/*end the framen loop*/
 

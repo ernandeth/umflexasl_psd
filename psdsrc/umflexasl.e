@@ -336,7 +336,7 @@ int debug = 0 with {0,1,0,INVIS,"1 if debug is on ",};
 float echo1bw = 16 with {,,,INVIS,"Echo1 filter bw.in KHz",};
 
 /*MRF mode features*/
-int mrf_mode = 2 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
+int mrf_mode = 0 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
 int NKrepeats = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the k-space rotation pattern in the time series",};
 int mrf_sched_id = 1;
 float prev_theta = 0.0;  /* rotation angles from last frame */

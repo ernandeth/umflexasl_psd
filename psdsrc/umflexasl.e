@@ -337,7 +337,10 @@ float echo1bw = 16 with {,,,INVIS,"Echo1 filter bw.in KHz",};
 
 /*MRF mode features*/
 int mrf_mode = 0 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
-int NKrepeats = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the k-space rotation pattern in the time series",};
+int Nkcycles = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the k-space rotation pattern in the time series",};
+int kcycle_count =0;
+int kcycle_len;
+
 int mrf_sched_id = 1;
 float prev_theta = 0.0;  /* rotation angles from last frame */
 float prev_phi = 0.0;    /* rotation angles from last frame */
@@ -1410,7 +1413,16 @@ STATUS predownload( void )
 		else fprintf(stderr, "\nSuccess reading schedule %05d", mrf_sched_id);
 	}
 	/* -------------------------*/
-	
+	if (mrf_mode > 0)
+	{
+		/* kcycle_len is the number of frames for each set of rotations before we repeat the k-space pattern
+		It needs to be an even number*/
+		kcycle_len = 2*(int)(nframes / Nkcycles/2);
+		fprintf(stderr, "\npredownload(): MRF_mode= %d, will collect %d frames before repeating the k-space pattern \n", mrf_mode, kcycle_len);
+
+	}
+
+
 	/* Set the parameters for the spin echo rf1 kspace rewinder */
 
 	/* Set the parameters for the crusher gradients */
@@ -3352,7 +3364,7 @@ int write_scan_info() {
 
 	if (mrf_mode > 0){
 		fprintf(finfo, "\nMRF MODE : %d . \n\tK-space trajectory is rotated from frame to frame (see kviews.txt) \n", mrf_mode);
-		fprintf(finfo, "\t%-50s%20d\n", "Number of k-space sampling pattern repetitions: ", NKrepeats);
+		fprintf(finfo, "\t%-50s%20d\n", "Number of k-space sampling pattern repetitions: ", Nkcycles);
 		if (mrf_mode==1)
 			fprintf(finfo, "\t%-50s%20s%05d \n", "MRF Labeling timing file in:", "mrfasl_schedules/ \n", mrf_sched_id );
 		fprintf(finfo, "\n------\n");
@@ -4186,6 +4198,7 @@ STATUS scan( void )
 	/* clear memory for the velocity spectrum buffers - if needed*/
 	FreeNode(s_phsbuffer);
 
+	/* redundant execution so that the text files get written at the end of the pulse sequence execution*/
 	write_scan_info();
 
 	fprintf(stderr, "scan(): reached end of scan, sending endpass packet (t = %d / %.0f us)...\n", ttotal, pitscan);
@@ -4532,6 +4545,8 @@ int genviews() {
 	}
 
 	rotation_count=0;
+	kcycle_count=0;
+
 	/* Loop through all views */
 	for(nfr=0; nfr < mrf_nframes; nfr++){
 		/*fprintf(stderr, "genviews(): rotation table tmtxtbl[][] entries for frame %d : \n", nfr);*/
@@ -4625,7 +4640,7 @@ int genviews() {
 
 					/* Keep track of total number of echoes in the sequence*/
 					rotation_count++;
-					
+
 					/* debugging : 
 					fprintf(stderr,"rotidx ; %d -", rotidx);
 					for (n=0; n<9; n++){
@@ -4651,17 +4666,26 @@ int genviews() {
 
 		/*BUT ... in MRF mode  2 , we change the rotations each PAIR of frames
 		- remember that each PAIR of control-label frames needs to have the same rotations */
-		if (mrf_mode==2) {
+		if (mrf_mode > 0) {
 			if ( (nfr%2) == 0){
-				/* repeat previous frame's rotations by rewinding the rotation counter */
-				rotation_count -= (opetl*narms);
-				//fprintf(stderr,"rotation num. %d\n", rotation_count);
+				/* repeat frame's rotations pairwise by rewinding the rotation counter on odd frames */
+				rotation_count -= (opetl * narms);
+				// fprintf(stderr,"rotation num. %d\n", rotation_count);
 			}
-			/* introduce repetition in the mrf rotations.
-			We repeat the trajectory pattern NKrepeats times in the time series*/
-			if ((nfr % (int)(mrf_nframes/NKrepeats) ) == 0){
+			/* introduce repetition in the mrf rotation pattern
+			We repeat the trajectory pattern Nkcycles times in the time series
+			NB - this has to be done after a PAIR of images is collected */
+			
+			fprintf(stderr, "genviews():  nfr: %d , kcycle_count= %d, kcycle_len: %d, rotation_count: %d\n",
+					nfr, kcycle_count, kcycle_len, rotation_count);
+			
+			kcycle_count++;
+			if (kcycle_count == kcycle_len)
+			{
 				rotation_count = 0;
+				kcycle_count = 0;
 			}
+			
 		}
 	}/*end the framen loop*/
 

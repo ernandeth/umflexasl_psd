@@ -4557,7 +4557,11 @@ int genviews() {
 					/* calculate view index */
 					rotidx = armn*opnshots*opetl + shotn*opetl + echon;
 					if(mrf_mode >0){
-						rotidx += narms*opnshots*opetl*nfr;
+						rotidx += narms * opnshots * opetl * nfr;
+						/*
+						fprintf(stderr, "genviews():  nfr: %d , kcycle_count= %d, kcycle_len: %d, rotation_count: %d\n",
+								nfr, kcycle_count, kcycle_len, rotation_count);
+						*/
 					}
 
 					/* Set the z-axis rotation angles and kz step (as a fraction of kzmax) */ 
@@ -4667,6 +4671,7 @@ int genviews() {
 		/*BUT ... in MRF mode  2 , we change the rotations each PAIR of frames
 		- remember that each PAIR of control-label frames needs to have the same rotations */
 		if (mrf_mode > 0) {
+
 			if ( (nfr%2) == 0){
 				/* repeat frame's rotations pairwise by rewinding the rotation counter on odd frames */
 				rotation_count -= (opetl * narms);
@@ -4675,9 +4680,6 @@ int genviews() {
 			/* introduce repetition in the mrf rotation pattern
 			We repeat the trajectory pattern Nkcycles times in the time series
 			NB - this has to be done after a PAIR of images is collected */
-			
-			fprintf(stderr, "genviews():  nfr: %d , kcycle_count= %d, kcycle_len: %d, rotation_count: %d\n",
-					nfr, kcycle_count, kcycle_len, rotation_count);
 			
 			kcycle_count++;
 			if (kcycle_count == kcycle_len)

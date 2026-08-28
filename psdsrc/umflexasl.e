@@ -337,7 +337,7 @@ float echo1bw = 16 with {,,,INVIS,"Echo1 filter bw.in KHz",};
 
 /*MRF mode features*/
 int mrf_mode = 0 with {0, 2, 0, VIS, "MRF mode. (0)=none, (1)= update ASL timings + rotations every frame, (2)=updates rotations only",};
-int Nkcycles = 4 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the k-space rotation pattern in the time series",};
+int Nkcycles = 1 with {1, 20, 0, VIS, "MRF mode: How many times to repeat the k-space rotation pattern in the time series",};
 int kcycle_count =0;
 int kcycle_len;
 
@@ -4642,7 +4642,7 @@ int genviews() {
 					}
 					fprintf(fID_kviews, "\n");
 
-					/* Keep track of total number of echoes in the sequence*/
+					/* Keep track of total number of rotations in the sequence*/
 					rotation_count++;
 
 					/* debugging : 
@@ -4662,16 +4662,13 @@ int genviews() {
 			rotation_count=0;
 		}	
 
-		/* in MRF mode -  we use different rotations in each frame.*/ 
-		if (mrf_mode >0)  {
-			/* SOS case: rotate along z axis from frame to frame */
-			prev_rz += GoldenAngle;  /* increment by golden angle*/
-		}
-
-		/*BUT ... in MRF mode  2 , we change the rotations each PAIR of frames
+		/*BUT ... in MRF mode , we change the rotations each PAIR of frames
 		- remember that each PAIR of control-label frames needs to have the same rotations */
 		if (mrf_mode > 0) {
-
+			
+			/* SOS case: rotate along z axis from frame to frame */
+			prev_rz += GoldenAngle;  /* increment by golden angle*/
+			
 			if ( (nfr%2) == 0){
 				/* repeat frame's rotations pairwise by rewinding the rotation counter on odd frames */
 				rotation_count -= (opetl * narms);

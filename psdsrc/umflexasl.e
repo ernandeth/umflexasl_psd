@@ -1632,23 +1632,23 @@ STATUS predownload( void )
 			minesp += pw_gy_crushera + pw_gy_crusher + pw_gy_crusherd; /* post-rf crusher */
 			minesp += pgNObuffertime;
 			minesp += TIMESSI; /* inter-core time */
-			if (flowcomp_flag == 1 && spi_mode == 0){
-				minesp +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
-				minesp += pgNObuffertime;
-			}
 			if (spi_mode == 0) {
-				minesp += (pw_gzw1a + pw_gzw1 + pw_gzw1d + pgNObuffertime); /* z encode gradient */
+				minesp += (pw_gzw1a + pw_gzw1 + pw_gzw1d + pgNObuffertime); /* Stack of Spirals: z encode gradient */
 				minesp += pgNObuffertime;
+				if (flowcomp_flag==1){
+					minesp +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
+					minesp += pgNObuffertime;
+				}
 			}
 			minesp += pw_gxw; /* spiral readout */
 			minesp += pgNObuffertime;
 			if (spi_mode == 0) {
-				minesp += (pw_gzw2a + pw_gzw2 + pw_gzw2d + pgNObuffertime); /* z rewind gradient */
+				minesp += (pw_gzw2a + pw_gzw2 + pw_gzw2d + pgNObuffertime); /* Stack of Spirals: z rewind gradient */
 				minesp += pgNObuffertime;
-			}
-			if (flowcomp_flag == 1 && spi_mode == 0){
-				minesp += (pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* for symmetry - add length of fc pre-phaser */
-				minesp += pgNObuffertime;
+				if (flowcomp_flag==1){
+					minesp +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
+					minesp += pgNObuffertime;
+				}
 			}
 			minesp += TIMESSI; /* inter-core time */
 			minesp += pgNObuffertime;
@@ -1684,12 +1684,18 @@ STATUS predownload( void )
 			minte += pgNObuffertime;
 			minte += TIMESSI; /* inter-core time */
 			minte += pgNObuffertime;
-			minte += (flowcomp_flag == 1 && spi_mode == 0) * (pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
-			minte += (spi_mode == 0) * (pw_gzw1a + pw_gzw1 + pw_gzw1d + pgNObuffertime);					   /* SOS z encode gradient */
+			if (spi_mode == 0) {
+				minte += (pw_gzw2a + pw_gzw2 + pw_gzw2d + pgNObuffertime); /* Stack of Spirals: z rewind gradient */
+				minte += pgNObuffertime;
+				if (flowcomp_flag==1){
+					minte +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
+					minte += pgNObuffertime;
+				}
+			}
 			minte += pw_gxw / 2;																			   /* first half of spiral readout */
 
+			fprintf(stderr, "\n -- FSE case: calculated minTE and minESP: %d and  %d (will use the largest one for minTE)\n", minte , minesp);
 			minte = (int)fmax(minte, minesp);
-			fprintf(stderr, "\n -- FSE case: calculated minTE and minESP: %d and  %d\n", minte , minesp);
 
 			/* calculate deadtimes */
 			deadtime1_seqcore = (opte - minesp)/2; /* old code - wrong?*/
@@ -1991,7 +1997,7 @@ STATUS predownload( void )
 	fprintf(stderr, "\n--deadtime2_seqcore %d " , deadtime2_seqcore);
 	fprintf(stderr, "\n--dur_rf0core %d " , dur_rf0core);
 	fprintf(stderr, "\n--dur_rf1core %d " , dur_rf1core);
-	fprintf(stderr, "\n--dur_rf1nscore %d " , dur_rf1core);
+	fprintf(stderr, "\n--dur_rf1nscore %d " , dur_rf1nscore);
 	fprintf(stderr, "\n--dur_crushcore %d " , dur_crushcore);
 	fprintf(stderr, "\n--dur_seqcore %d " , dur_seqcore);
 	fprintf(stderr, "\n--TIMESSI %d " , TIMESSI);
@@ -4266,16 +4272,8 @@ STATUS scan( void )
 		}
 	}
 
-	/* play this crusher at the very end as a test */
-	ttotal += play_crusher();
-					
-
-	/* redundant execution so that the text files get written at the end of the pulse sequence execution*/
-	write_scan_info();
-
 	fprintf(stderr, "scan(): reached end of scan, sending endpass packet (t = %d / %.0f us)...\n", ttotal, pitscan);
 	play_endscan();
-
 
 	/* clear memory for the velocity spectrum buffers - if needed*/
 	if (doVelSpectrum==1 && prep1_id >0){
@@ -4284,6 +4282,10 @@ STATUS scan( void )
 	}
 
 	rspexit();
+	
+	/* redundant execution so that the text files get written at the end of the pulse sequence execution*/
+	write_scan_info();
+
 	return SUCCESS;
 }
 

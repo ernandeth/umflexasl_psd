@@ -1632,11 +1632,12 @@ STATUS predownload( void )
 			minesp += pw_gy_crushera + pw_gy_crusher + pw_gy_crusherd; /* post-rf crusher */
 			minesp += pgNObuffertime;
 			minesp += TIMESSI; /* inter-core time */
+			minesp += pgNObuffertime;
 			if (spi_mode == 0) {
 				minesp += (pw_gzw1a + pw_gzw1 + pw_gzw1d + pgNObuffertime); /* Stack of Spirals: z encode gradient */
 				minesp += pgNObuffertime;
 				if (flowcomp_flag==1){
-					minesp +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
+					minesp +=(pw_gzfca + pw_gzfc + pw_gzfcd ); /* flow comp pre-phaser */
 					minesp += pgNObuffertime;
 				}
 			}
@@ -1645,10 +1646,6 @@ STATUS predownload( void )
 			if (spi_mode == 0) {
 				minesp += (pw_gzw2a + pw_gzw2 + pw_gzw2d + pgNObuffertime); /* Stack of Spirals: z rewind gradient */
 				minesp += pgNObuffertime;
-				if (flowcomp_flag==1){
-					minesp +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
-					minesp += pgNObuffertime;
-				}
 			}
 			minesp += TIMESSI; /* inter-core time */
 			minesp += pgNObuffertime;
@@ -1661,9 +1658,8 @@ STATUS predownload( void )
 			else
 				minesp += pw_gzrf1a + pw_gzrf1/2; /* 1st half of rf1 pulse */
 
-			/* calculate minimum TE 
-				SPGR:time from center of rf1 to beginning of readout pulse in GRE 
-				FSE: time from center of rf0 pulse to center of readout 
+			/* calculate minimum TE, based on the escitation part of the echo 
+				FSE: time from center of rf0 pulse to center of rf1, then double it 
 			*/
 			minte += pw_gzrf0 / 2 + pw_gzrf0d; /* 2nd half of rf0 pulse */
 			minte += pgNObuffertime;
@@ -1674,25 +1670,13 @@ STATUS predownload( void )
 			minte += pw_gy_crushera + pw_gy_crusher + pw_gy_crusherd; /* pre-rf crusher */
 			minte += pgNObuffertime;
 			minte += TIMESSI; /* inter-core time */
+			minte += pgbuffertime;
 			if (doNonSelRefocus)
-				minte += pw_rf1ns; /* rf1 NS pulse */
+				minte += pw_rf1ns/2; /* rf1 NS pulse */
 			else
-				minte += pw_gzrf1a + pw_gzrf1 + pw_gzrf1d; /* rf1 pulse */
-			minte += TIMESSI;							   /* inter-core time */
-			minte += pgNObuffertime;
-			minte += pw_gy_crushera + pw_gy_crusher + pw_gy_crusherd; /* post-rf crusher */
-			minte += pgNObuffertime;
-			minte += TIMESSI; /* inter-core time */
-			minte += pgNObuffertime;
-			if (spi_mode == 0) {
-				minte += (pw_gzw2a + pw_gzw2 + pw_gzw2d + pgNObuffertime); /* Stack of Spirals: z rewind gradient */
-				minte += pgNObuffertime;
-				if (flowcomp_flag==1){
-					minte +=(pw_gzfca + pw_gzfc + pw_gzfcd + pgNObuffertime); /* flow comp pre-phaser */
-					minte += pgNObuffertime;
-				}
-			}
-			minte += pw_gxw / 2;																			   /* first half of spiral readout */
+				minte += pw_gzrf1a + pw_gzrf1/2; /* rf1 pulse */
+
+			minte *= 2;
 
 			fprintf(stderr, "\n -- FSE case: calculated minTE and minESP: %d and  %d (will use the largest one for minTE)\n", minte , minesp);
 			minte = (int)fmax(minte, minesp);
@@ -1700,7 +1684,10 @@ STATUS predownload( void )
 			/* calculate deadtimes */
 			deadtime1_seqcore = (opte - minesp)/2; /* old code - wrong?*/
 			deadtime2_seqcore = (opte - minesp)/2; /* old code - wrong?*/
-			
+			if(flowcomp_flag){
+				deadtime1_seqcore -= (pw_gzfca + pw_gzfc + pw_gzfcd  + pgNObuffertime)/2; /* flow comp pre-phaser */
+				deadtime2_seqcore += (pw_gzfca + pw_gzfc + pw_gzfcd  + pgNObuffertime)/2; /* flow comp pre-phaser */
+			}				
 			deadtime_rf0core = opte/2 ;
 			deadtime_rf0core -= (pw_gzrf0 / 2 + pw_gzrf0d); /* 2nd half of rf0 pulse */
 			deadtime_rf0core -= pgNObuffertime;
@@ -1711,6 +1698,7 @@ STATUS predownload( void )
 			deadtime_rf0core -= (pw_gy_crushera + pw_gy_crusher + pw_gy_crusherd); /* pre-rf crusher */
 			deadtime_rf0core -= pgNObuffertime;
 			deadtime_rf0core -= TIMESSI; /* inter-core time */
+			deadtime_rf0core -= pgbuffertime;
 			if (doNonSelRefocus)
 				deadtime_rf0core -= pw_rf1ns/2; /* rf1 NS pulse */
 			else

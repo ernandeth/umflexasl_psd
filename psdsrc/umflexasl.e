@@ -1500,11 +1500,11 @@ STATUS predownload( void )
 	/* Note about GRE case: rf1 does the excitation, instead of rf0.   
 	rf0 does not get played at all, so we jsut leave it alone
 	Also - we use trap2 as the slice-select refocusing gradient */
-	if (ro_type > 2) { 
-		pw_gzrf1r = tmp_pw;
-		pw_gzrf1ra = tmp_pwa;
-		pw_gzrf1rd = tmp_pwd;
-		a_gzrf1r = -0.5 * tmp_a;
+	if (ro_type == 2) { 
+		pw_gzrf1r = 0;
+		pw_gzrf1ra = 500;
+		pw_gzrf1rd = 500;
+		a_gzrf1r = -tmp_area / (pw_gzrf1ra + pw_gzrf1rd);
 	}
 
 	/* set parameters for flow compensated kz-encode (pre-scaled to kzmax) */

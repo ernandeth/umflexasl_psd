@@ -1484,23 +1484,26 @@ STATUS predownload( void )
 	a_gy_crusher = tmp_a;
 	
 	
-	/* calculate slice select refocuser gradients and assign parameters to gradients */
-	tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d)/2.0);
-	amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd); 	
-	tmp_a *= -0.5;
-	
-	/* Note about FSE case:  rf0 does the 90 deg. excitation.  
-	rf1 does the refocusers.  They should use the same slab select gradient size... 
-	unless we are doing zoomed FOV*/
-	pw_gzrf0r = tmp_pw;
-	pw_gzrf0ra = tmp_pwa;
-	pw_gzrf0rd = tmp_pwd;
-	a_gzrf0r = tmp_a / zoom_fraction;
+	/* calculate slice select  refocuser trapezoid assign parameters  */
+	if(ro_type<=2){
+		/* Note about FSE case:  rf0 does the 90 deg. excitation... created by SLICESELZ
+		and rf1 is used for the 180-refocusers instead */
+		tmp_area = 0.5*a_gzrf0 * (pw_gzrf0 + (pw_gzrf0a + pw_gzrf0d) / 2.0);
+		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
 
-	/* Note about GRE case: rf1 does the excitation, instead of rf0.   
-	rf0 does not get played at all, so we jsut leave it alone
-	Also - we use trap2 as the slice-select refocusing gradient */
-	if (ro_type == 3) { 
+		pw_gzrf0r = tmp_pw;
+		pw_gzrf0ra = tmp_pwa;
+		pw_gzrf0rd = tmp_pwd;
+		a_gzrf0r = -tmp_a / zoom_fraction;
+
+	}
+	if (ro_type >2)
+	{
+		/* Note about GRE case: rf1 does the excitation, instead of rf0.
+		In fact, rf0 does not get played at all in GRE mode, so we just leave it alone.*/
+		tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d) / 2.0);
+		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
+
 		pw_gzrf1r = 0;
 		pw_gzrf1ra = 500;
 		pw_gzrf1rd = 500;

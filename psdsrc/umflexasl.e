@@ -3649,13 +3649,12 @@ STATUS prescanCore() {
 				
 				/* change rotation matrix and play crusher 
 				- Note that it's the same table of rotation matrices for the spirals 
-				and the crushers, but the order is reversed between the readouts and the crushers
-				*/
+				and the crushers */
 				setrotate( tmtxtbl[echon], 0 );
 				ttotal += play_crusher();
-				/* restore original rotation matrix */				
-				setrotate( tmtx0, 0 );
 
+				/* restore original rotation matrix and play the refocuser*/				
+				setrotate( tmtx0, 0 );
 				if (doNonSelRefocus)
 					ttotal += play_rf1ns(FS_PI/2 );
 				else
@@ -3665,13 +3664,14 @@ STATUS prescanCore() {
 				/* change rotation matrix and play second crusher */
 				setrotate( tmtxtbl[echon], 0 );
 				ttotal += play_crusher();
+
 				/* restore original rotation matrix */				
 				setrotate( tmtx0, 0 );
 			}
 			else    /* SPGR cases */
 			{
 				ttotal += play_rf1(rfspoil_flag*rfphase_tab[echon]);
-		    }
+			}
 
 			/* set rotation matrix for each echo readout and play readout*/
 			fprintf(stderr, "prescanCore(): playing readout for prescan iteration %d , echo %d...\n", view, echon);
@@ -3680,7 +3680,7 @@ STATUS prescanCore() {
 
 			/* SPGR mode also needs a crusher after the readout*/
 			/* Note that rotation matrix has been changed*/
-			if (ro_type > 2)
+			if (ro_type == 3)
 			{
 				setrotate( tmtxtbl[echon], 0 );
 				ttotal += play_crusher(); 
@@ -4175,10 +4175,6 @@ STATUS scan( void )
 							setiamp(arf1_var * MAX_PG_WAMP, &rf1,0);
 							fprintf(stderr,"\nscan(): setting sel. flip ang: %f (arf180=%f)\n", arf1_var, arf180 ); 
 						}
-					}
-			
-					if (ro_type <= 2) 
-					{       /* FSE - CPMG */
 
 						/* change rotation matrix and play first crusher
 						- Note that we are trying to avoid crushing along the same direction every time.
@@ -4231,7 +4227,7 @@ STATUS scan( void )
 					/* play the readout gradients (spirals) */
 					ttotal += play_readout();
 
-					if (ro_type > 2)
+					if (ro_type == 3)
 					{
 						/* SPGR mode:  needs a crusher after the readout*/
 						/* Note that rotation matrix has been changed, so we don't always crush along the same axis */

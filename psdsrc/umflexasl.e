@@ -1486,15 +1486,17 @@ STATUS predownload( void )
 	
 	/* calculate slice select  refocuser trapezoid assign parameters  */
 	if(ro_type<=2){
-		/* Note about FSE case:  rf0 does the 90 deg. excitation... created by SLICESELZ
+		/* Note about FSE case:  rf0 does the 90 deg. excitation
 		and rf1 is used for the 180-refocusers instead */
-		tmp_area = 0.5*a_gzrf0 * (pw_gzrf0 + (pw_gzrf0a + pw_gzrf0d) / 2.0);
-		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
+		tmp_area = a_gzrf0 * (pw_gzrf0 + (pw_gzrf0a + pw_gzrf0d) / 2.0);
 
 		pw_gzrf0r = tmp_pw;
 		pw_gzrf0ra = tmp_pwa;
 		pw_gzrf0rd = tmp_pwd;
-		a_gzrf0r = -tmp_a / zoom_fraction;
+		a_gzrf0r = -tmp_area / (float)(pw_gzrf0ra + pw_gzrf0rd);
+	
+		fprintf(stderr, "\npredownload(): calculated rf0 refocuser gradient, ramp = %d, plateau=%d, amp=%0.2f",
+			pw_gzrf0ra, pw_gzrf0r, a_gzrf0r);
 
 	}
 	if (ro_type >2)
@@ -1502,12 +1504,14 @@ STATUS predownload( void )
 		/* Note about GRE case: rf1 does the excitation, instead of rf0.
 		In fact, rf0 does not get played at all in GRE mode, so we just leave it alone.*/
 		tmp_area = a_gzrf1 * (pw_gzrf1 + (pw_gzrf1a + pw_gzrf1d) / 2.0);
-		amppwgrad(tmp_area, GMAX, 0, 0, ZGRAD_risetime, 0, &tmp_a, &tmp_pwa, &tmp_pw, &tmp_pwd);
-
+		
 		pw_gzrf1r = 0;
 		pw_gzrf1ra = 500;
 		pw_gzrf1rd = 500;
 		a_gzrf1r = -tmp_area / (float)(pw_gzrf1ra + pw_gzrf1rd);
+	
+		fprintf(stderr, "\npredownload(): calculated rf1 refocuser gradient, ramp = %d, plateau=%d, amp=%0.2f",
+			pw_gzrf1ra, pw_gzrf1r, a_gzrf1r);
 	}
 
 	/* set parameters for flow compensated kz-encode (pre-scaled to kzmax) */

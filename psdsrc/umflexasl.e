@@ -1490,12 +1490,12 @@ STATUS predownload( void )
 		and rf1 is used for the 180-refocusers instead */
 		tmp_area = a_gzrf0 * (pw_gzrf0 + (pw_gzrf0a + pw_gzrf0d) / 2.0);
 
-		pw_gzrf0r = tmp_pw;
-		pw_gzrf0ra = tmp_pwa;
-		pw_gzrf0rd = tmp_pwd;
+		pw_gzrf0r = 0;
+		pw_gzrf0ra = 500;
+		pw_gzrf0rd = 500;
 		a_gzrf0r = -tmp_area / (float)(pw_gzrf0ra + pw_gzrf0rd);
 	
-		fprintf(stderr, "\npredownload(): calculated rf0 refocuser gradient, ramp = %d, plateau=%d, amp=%0.2f",
+		fprintf(stderr, "\npredownload(): calculated rf0 refocuser gradient, ramp = %d, plateau=%d, amp=%0.3f\n",
 			pw_gzrf0ra, pw_gzrf0r, a_gzrf0r);
 
 	}
@@ -1510,7 +1510,7 @@ STATUS predownload( void )
 		pw_gzrf1rd = 500;
 		a_gzrf1r = -tmp_area / (float)(pw_gzrf1ra + pw_gzrf1rd);
 	
-		fprintf(stderr, "\npredownload(): calculated rf1 refocuser gradient, ramp = %d, plateau=%d, amp=%0.2f",
+		fprintf(stderr, "\npredownload(): calculated rf1 refocuser gradient, ramp = %d, plateau=%d, amp=%0.3f\n",
 			pw_gzrf1ra, pw_gzrf1r, a_gzrf1r);
 	}
 
